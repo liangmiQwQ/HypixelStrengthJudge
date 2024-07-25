@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use std::fmt::format;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -36,8 +37,16 @@ lazy_static! {
 }
 
 #[tauri::command]
-fn get_latest_location(_logDirPath: &str) -> String {
-    String::from("fuckyouRust")
+pub fn get_latest_location(log_dir_path: &str) -> String {
+    get_latest_log_file(log_dir_path)
+}
+
+fn get_latest_log_file(log_dir_path: &str) -> String {
+    let message: String = match fs::read_to_string(get_latest_log_path(log_dir_path)){
+        Ok(file) => file,
+        Err(e) => format!("Error {}", e)
+    };
+    message
 }
 
 fn get_latest_log_path(log_dir_path: &str) -> String {
@@ -98,14 +107,19 @@ fn get_latest_log_path(log_dir_path: &str) -> String {
                 }
             };
 
-            if latest_change - now < latest_file.gap { //laster
+            let gap = latest_change - now;
+            if gap < latest_file.gap { //laster
                 latest_file = LatestFile{
                     path: file.to_str().unwrap_or("null").to_string(),
-                    gap: latest_change - now
+                    gap
                 }
-            }
+            };
         }
-        latest_file.path
+        *latest_log_file = LogFile{
+            timestamp: now,
+            path: latest_file.path.clone()
+        };
+        latest_log_file.path.clone()
     }else{
         return latest_log_file.path.clone(); 
     }
