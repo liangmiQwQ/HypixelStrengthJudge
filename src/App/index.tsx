@@ -1,24 +1,32 @@
-import { Button, Theme } from "@radix-ui/themes";
+import { Theme } from "@radix-ui/themes";
 import "../global.css"
 import '@radix-ui/themes/styles.css';
-import { useRef } from "react";
+import NavBar from "../NavBar";
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import languages from "../language/languages";
 
 export default function index() {
-  const dragRef = useRef(null)
+  console.log({
+    resources: {
+      ...languages
+    }
+  })
+  i18n.use(initReactI18next).init({
+    resources: {
+      ...languages
+    },
+    lng: "en", // if you're using a language detector, do not define the lng option
+    fallbackLng: "en",
+    interpolation: {
+      escapeValue: false // react already safes from xss => https://www.i18next.com/translation-function/interpolation#unescape
+    }
+  })
 
   return (
     <Theme appearance="light" className="rounded-lg overflow-hidden">
       <div className="w-full h-screen rounded-md bg-white overflow-hidden">
-        <div className="bg-accent-700 h-12 w-full flex justify-between items-center">
-          <div>
-
-          </div>
-          <span className="text-white font-semibold text-2xl cursor-default" ref={dragRef}>
-            我是傻逼
-          </span>
-          <div>
-          </div>
-        </div>
+        <NavBar />
       </div>
     </Theme>
   )

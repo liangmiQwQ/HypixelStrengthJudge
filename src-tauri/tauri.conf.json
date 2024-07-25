@@ -11,19 +11,18 @@
   },
   "tauri": {
     "allowlist": {
-      "all": false,
+      "all": true,
       "shell": {
-        "all": false,
+        "all": true,
         "open": true
       }
     },
     "windows": [
       {
-        "title": "bw_fkdr",
         "width": 800,
         "height": 600,
-        "decorations": false,
-        "transparent": true
+        "titleBarStyle": "Overlay",
+        "title": ""
       }
     ],
     "security": {
