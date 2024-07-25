@@ -3,11 +3,30 @@ import { IoMdSettings } from "react-icons/io";
 import { useTranslation } from "react-i18next";
 import SettingOption from "./SettingOption";
 import useConfig from "../store/config";
+import { selectValue } from "../libs/accentColors";
+import { useEffect, useMemo, useRef } from "react";
+import { os } from '@tauri-apps/api';
+import { Value } from "@radix-ui/themes/src/components/data-list.js";
 
-export default function Index() {
+export default function NavBar() {
   const { t } = useTranslation();
   const { setAccentColor, setHypApiKey, setLogPath, setLanguage } = useConfig()
   const { accentColor, hypApiKey, logPath, language } = useConfig()
+
+  const isWindows = useRef(false)
+  useEffect(() => {
+    const fetchOSInfo = async () => {
+      const platform = await os.platform();
+      if (platform.startsWith("win")) {
+        isWindows.current = true
+      }
+    }
+    fetchOSInfo();
+  }, [])
+  const memoizedAccentColor = useMemo(() => accentColor, []);
+  const memoizedHypApiKey = useMemo(() => hypApiKey, []);
+  const memoizedLogPath = useMemo(() => logPath, []);
+  const memoizedLanguage = useMemo(() => language, []);
 
   return (
     <div
@@ -32,16 +51,35 @@ export default function Index() {
             <IoMdSettings size={25} />
           </IconButton>
         </Popover.Trigger>
-        <Popover.Content className="w-80 flex flex-col">
+        <Popover.Content className="w-80 flex flex-col gap-1">
           <SettingOption
-            tipsText="Language"
+            tipsText={t("language")}
             optionType="select"
             selectValue={[
-              { name: "Chinese", id: "zh" },
-              { name: "English", id: "en" }
+              { name: t("zh"), id: "zh" },
+              { name: t("en"), id: "en" }
             ]}
-            defaultValue={language}
+            defaultValue={memoizedLanguage}
             onValueChange={(value: any) => setLanguage(value as ("zh" | "en"))}
+          />
+          <SettingOption
+            tipsText={t("accentColor")}
+            optionType="select"
+            selectValue={selectValue}
+            defaultValue={memoizedAccentColor}
+            onValueChange={(value: any) => setAccentColor(value)}
+          />
+          <SettingOption
+            tipsText={t("logPath")}
+            optionType="input"
+            placeholder={isWindows.current ? "C:\\\\Users\\Admin\\AppData\\.minecraft\\logs" : "~/.minecraft/logs"}
+            onValueChange={(value: any) => setLogPath(value)}
+          />
+          <SettingOption
+            tipsText={t("hypApiKey")}
+            optionType="input"
+            placeholder="xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            onValueChange={(value: any) => setHypApiKey(value)}
           />
         </Popover.Content>
       </Popover.Root>

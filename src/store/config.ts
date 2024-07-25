@@ -18,7 +18,7 @@ const useConfig = create<userConfigStore>((set, _get) => {
       localStorage.setItem("hypApiKey", hypApiKey);
       set({ hypApiKey });
     },
-    accentColor: localAccentColor ? (localAccentColor as userConfig['accentColor']) : "gray",
+    accentColor: localAccentColor ? (localAccentColor as userConfig['accentColor']) : "teal",
     setAccentColor: (accentColor: userConfig['accentColor']) => {
       localStorage.setItem("accentColor", accentColor);
       set({ accentColor });

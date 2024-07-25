@@ -5,8 +5,9 @@ import NavBar from "./NavBar";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import languages from "../language/languages";
+import useConfig from "../store/config";
 
-export default function index() {
+export default function App() {
   console.log({
     resources: {
       ...languages
@@ -23,8 +24,10 @@ export default function index() {
     }
   })
 
+  const { accentColor } = useConfig()
+
   return (
-    <Theme appearance="light" className="rounded-lg overflow-hidden">
+    <Theme appearance="light" className="rounded-lg overflow-hidden" accentColor={accentColor}>
       <div className="w-full h-screen rounded-md overflow-hidden">
         <NavBar />
       </div>
