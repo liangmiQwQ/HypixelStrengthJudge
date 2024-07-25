@@ -19,8 +19,12 @@
     },
     "windows": [
       {
-        "width": 800,
+        "width": 900,
         "height": 600,
+        "minHeight": 550,
+        "maxHeight": 900,
+        "maxWidth": 1200,
+        "minWidth": 800,
         "titleBarStyle": "Overlay",
         "title": ""
       }

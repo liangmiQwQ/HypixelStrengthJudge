@@ -12,12 +12,12 @@ const en = {
 
 const zh = {
   translation: {
-    title: "Hypixel起床战争强度检测器",
+    title: "Hypixel 起床战争强度检测器",
     language: "语言",
     zh: "简体中文",
     en: "English",
-    hypApiKey: "HypApi密钥",
-    logPath: "Minecraft日志路径",
+    hypApiKey: "HypApi 密钥",
+    logPath: "Minecraft 日志路径",
     accentColor: "主题颜色",
   }
 }
