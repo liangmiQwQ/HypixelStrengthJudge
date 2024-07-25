@@ -1,7 +1,7 @@
 import { Theme } from "@radix-ui/themes";
 import "../global.css"
 import '@radix-ui/themes/styles.css';
-import NavBar from "../NavBar";
+import NavBar from "./NavBar";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import languages from "../language/languages";
@@ -25,7 +25,7 @@ export default function index() {
 
   return (
     <Theme appearance="light" className="rounded-lg overflow-hidden">
-      <div className="w-full h-screen rounded-md bg-white overflow-hidden">
+      <div className="w-full h-screen rounded-md overflow-hidden">
         <NavBar />
       </div>
     </Theme>
