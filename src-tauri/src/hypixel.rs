@@ -6,10 +6,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::logRegex::{
-    self, extract_party_leader, extract_party_members, extract_party_moderators,
-    get_useful_party_lines_patterns,
-};
+// use log_regex::{
+//     extract_party_leader, extract_party_members, extract_party_moderators,
+//     get_useful_party_lines_patterns,
+// };
 
 #[derive(Serialize)]
 pub struct PartyInfo {
@@ -132,7 +132,7 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     if is_pl {
         let mut is_in_party = true;
         for message in useful_lines {
-            for pattern in &logRegex::get_user_leave_patterns() {
+            for pattern in &log_regexx::get_user_leave_patterns() {
                 if pattern.is_match(&message) {
                     return_data.party_info = None;
                     is_in_party = false;
