@@ -1,88 +1,104 @@
+use std::vec;
+
 use regex::Regex;
 
+pub fn get_useful_party_lines_patterns() -> Vec<Regex> {
+    let mut patterns = Vec::new();
 
-pub fn get_useful_party_lines_patterns() -> Vec<Regex> { 
+    patterns.extend(get_user_leave_patterns());
+    patterns.extend(get_party_join_patterns());
+    patterns.extend(get_party_leave_patterns());
+    patterns.extend(get_job_change_patterns());
+
+    patterns
+}
+
+pub fn get_user_leave_patterns() -> Vec<Regex> {
     vec![
-      Regex::new(r".*?(.+?) joined the party\.").unwrap(), // English
-        Regex::new(r".*?(.+?)加入了组队。").unwrap(),          // Chinese
-
-        Regex::new(r".*?(.+?) has left the party\.").unwrap(), // English
-        Regex::new(r".*?(.+?)离开了组队。").unwrap(),          // Chinese
-
-        Regex::new(r".*?You have joined (.+?)'s party!").unwrap(), // English
-        Regex::new(r".*?你加入了(.+?)的组队！").unwrap(),         // Chinese
-
-        Regex::new(r".*?You left the party\.").unwrap(),          // English
-        Regex::new(r".*?你离开了组队。").unwrap(),                // Chinese
-
-        Regex::new(r".*?(.+?) has been removed from the party\.").unwrap(), // English
-        Regex::new(r".*?(.+?)已被移出组队。").unwrap(),                  // Chinese
-
-        Regex::new(r".*?You have been kicked from the party by (.+?)").unwrap(), // English
-        Regex::new(r".*?你已被(.+?)踢出组队").unwrap(),                   // Chinese (no "." or "。")
-
-        Regex::new(r".*?Kicked (.+?) because they were offline\.").unwrap(), // English
-        Regex::new(r".*?(.+?)已断开连接， 被移出你的组队。").unwrap(),      // Chinese
-
-        Regex::new(r".*?The party was transferred to (.+?) by (.+?)").unwrap(), // English
-        Regex::new(r".*?(.+?)将组队移交给了(.+?)").unwrap(),                 // Chinese (no "." or "。")
-
-        Regex::new(r".*?(.+?) has disbanded the party!").unwrap(), // English
-        Regex::new(r".*?(.+?)解散了组队！").unwrap(),              // Chinese
-
-        Regex::new(r".*?The party was disbanded because all invites expired and the party was empty\.").unwrap(), // English
-        Regex::new(r".*?因组队中没有成员， 且所有邀请均已过期， 组队已被解散。").unwrap(),                            // Chinese
+        Regex::new(r"\[CHAT\] You have joined (?:\[.*\])?(?:\s)?(.*)'s party!").unwrap(), // English
+        Regex::new(r"\[CHAT\] 你加入了(?:\[.*\])?(?:\s)?(.*)的组队！").unwrap(),          // Chinese
+        Regex::new(r"\[CHAT\] You left the party\.").unwrap(),           // English
+        Regex::new(r"\[CHAT\] 你离开了组队。").unwrap(),                 // Chinese
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*) has been removed from the party\.").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)已被移出组队。").unwrap(),            // Chinese
+        Regex::new(r"\[CHAT\] You have been kicked from the party by (?:\[.*\])?(?:\s)?(.*)").unwrap(), // English
+        Regex::new(r"\[CHAT\] 你已被(?:\[.*\])?(?:\s)?(.*)踢出组队").unwrap(),            // Chinese (no "." or "。")
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*) has disbanded the party!").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)解散了组队！").unwrap(),              // Chinese
+        Regex::new(
+            r"\[CHAT\] The party was disbanded because all invites expired and the party was empty\.",
+        )
+        .unwrap(), // English
+        Regex::new(r"\[CHAT\] 因组队中没有成员， 且所有邀请均已过期， 组队已被解散。").unwrap(), // Chinese
+    ]
+}
+pub fn get_party_join_patterns() -> Vec<Regex> {
+    vec![
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*) joined the party\.").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)加入了组队。").unwrap(),        // Chinese
+    ]
+}
+pub fn get_party_leave_patterns() -> Vec<Regex> {
+    vec![
+        Regex::new(r"\[CHAT\] Kicked (?:\[.*\])?(?:\s)?(.*) because they were offline\.").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)已断开连接， 被移出你的组队。").unwrap(), // Chinese
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*) has left the party\.").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)离开了组队。").unwrap(),          // Chinese
+    ]
+}
+pub fn get_job_change_patterns() -> Vec<Regex> {
+    vec![
+        Regex::new(r"\[CHAT\] The party was transferred to (?:\[.*\])?(?:\s)?(.*) by (?:\[.*\])?(?:\s)?(.*)").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)将组队移交给了(?:\[.*\])?(?:\s)?(.*)").unwrap(), // Chinese (no "." or "。")
     ]
 }
 
 pub fn extract_party_leader(line: &str) -> Option<String> {
-    let re = Regex::new(r#"\[CHAT\] Party Leader: (\[.*?\] )?(\w+)"#).unwrap();
-    
-    if let Some(captures) = re.captures(line) {
-        if let Some(name) = captures.get(2) {
-            return Some(name.as_str().to_string());
-        }
-    }
-    
-    None
+    let re = Regex::new(r"\[CHAT\] Party Leader: (?:\[.*\])?(?:\s)?(\w*)").unwrap();
+
+    re.captures(line)
+        .and_then(|caps| caps.get(3))
+        .map(|match_| match_.as_str().to_string())
 }
 
 pub fn extract_party_moderators(line: &str) -> Option<Vec<String>> {
-    let re = Regex::new(r#"\[CHAT\] Party Moderators: (.+)"#).unwrap();
+    let re = Regex::new(r"\[CHAT\] Party Moderators: (.*)").unwrap();
 
-    if let Some(captures) = re.captures(line) {
-        if let Some(names_str) = captures.get(1) {
-            let names = names_str.as_str()
-                .split('●')
-                .map(|s| s.trim().split(' ').last().unwrap_or("").to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            return Some(names);
-        }
-    }
+    let players = re
+        .captures(line)
+        .and_then(|caps| caps.get(1))
+        .map(|match_| match_.as_str().to_string())?;
 
-    // 如果没有匹配，返回 None
-    return None
-} 
+    let re_brackets = Regex::new(r"\[.*?\]").unwrap();
+    let re_spaces = Regex::new(r"\s+").unwrap();
+    let no_brackets = re_brackets.replace_all(&players, "");
+    let result: Vec<String> = re_spaces
+        .replace_all(&no_brackets, "")
+        .split("●")
+        .filter(|s| !s.is_empty()) // 过滤掉空字符串
+        .map(|s| s.trim().to_string()) // 将 &str 转换为 String
+        .collect();
 
+    return Some(result);
+}
 
 pub fn extract_party_members(line: &str) -> Option<Vec<String>> {
-    // 定义正则表达式来匹配 Party Members 名字
-    let re = Regex::new(r#"\[CHAT\] Party Members: (.+)"#).unwrap();
+    let re = Regex::new(r"\[CHAT\] Party Members: (.*)").unwrap();
 
-    // 尝试匹配正则表达式并提取名字
-    if let Some(captures) = re.captures(line) {
-        // 提取第一个捕获组（名字列表）
-        if let Some(names_str) = captures.get(1) {
-            let names = names_str.as_str()
-                .split('●')
-                .map(|s| s.trim().split(' ').last().unwrap_or("").to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            return Some(names);
-        }
-    }
+    let players = re
+        .captures(line)
+        .and_then(|caps| caps.get(1))
+        .map(|match_| match_.as_str().to_string())?;
 
-    // 如果没有匹配，返回 None
-    None
+    let re_brackets = Regex::new(r"\[.*?\]").unwrap();
+    let re_spaces = Regex::new(r"\s+").unwrap();
+    let no_brackets = re_brackets.replace_all(&players, "");
+    let result: Vec<String> = re_spaces
+        .replace_all(&no_brackets, "")
+        .split("●")
+        .filter(|s| !s.is_empty()) // 过滤掉空字符串
+        .map(|s| s.trim().to_string()) // 将 &str 转换为 String
+        .collect();
+
+    return Some(result);
 }

@@ -1,18 +1,20 @@
 use lazy_static::lazy_static;
-use tauri::api::dialog::MessageDialogBuilder;
+use regex::Regex;
+use serde::Serialize;
+use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::fs::{self};
-use serde::Serialize;
-use regex::Regex;
 
-use crate::logRegex::{extract_party_leader, extract_party_members, extract_party_moderators, get_useful_party_lines_patterns};
+use crate::logRegex::{
+    self, extract_party_leader, extract_party_members, extract_party_moderators,
+    get_useful_party_lines_patterns,
+};
 
 #[derive(Serialize)]
-pub struct PartyInfo{
+pub struct PartyInfo {
     user_job: String, // leader other
-    players: Vec<String>
+    players: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -30,23 +32,22 @@ pub struct PlayerData {
     bw_level: u16,
     lobby_level: u16,
 }
-struct LogFile{
+struct LogFile {
     path: String,
     timestamp: i64,
 }
 
-struct LatestFile{
+struct LatestFile {
     path: String,
     gap: i64,
 }
 
 #[derive(Serialize)]
-pub struct ReturnData{
+pub struct ReturnData {
     player_data: Option<PlayerData>,
     location: Location,
-    party_info: Option<PartyInfo>
+    party_info: Option<PartyInfo>,
 }
-
 
 lazy_static! {
     static ref LOCATION: Mutex<String> = Mutex::new(String::from("LOBBY"));
@@ -61,14 +62,13 @@ lazy_static! {
 }
 
 #[tauri::command]
-pub fn get_latest_info(log_dir_path: &str, username:&str) -> ReturnData {
-    let mut return_data = ReturnData{
-         player_data: todo!(), 
-         location: todo!(), 
-         party_info: None 
+pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
+    let mut return_data = ReturnData {
+        player_data: todo!(),
+        location: todo!(),
+        party_info: None,
     };
 
-    
     let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
 
     let file_content = get_latest_log_file(log_dir_path);
@@ -110,15 +110,10 @@ pub fn get_latest_info(log_dir_path: &str, username:&str) -> ReturnData {
     // [someone has disbanded the party!][someone解散了组队！]
     // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。]
 
-    let party = PartyInfo{
-        user_job: String::from("unknown"), 
-        players: vec![String::from("unknown")]
-    };
-    
-    let mut is_pl:bool = false;
-    let mut useful_lines:Vec<String> = vec![];
-    let mut last_pl_line_number:usize = 1;
-    for (index,line) in reversed_lines.iter().enumerate() {
+    let mut is_pl: bool = false;
+    let mut useful_lines: Vec<String> = vec![];
+    let mut last_pl_line_number: usize = 1;
+    for (index, line) in reversed_lines.iter().enumerate() {
         let patterns = get_useful_party_lines_patterns();
         for pattern in &patterns {
             if pattern.is_match(&line) {
@@ -134,101 +129,112 @@ pub fn get_latest_info(log_dir_path: &str, username:&str) -> ReturnData {
         }
     }
     useful_lines.reverse();
-    if is_pl{
-        // user used pl command
-        // line_number = all_line - last_line - 1
-        let line_number: usize = lines.len() - last_pl_line_number - 1;
-        // +2 and it's party leader
-        let leader_line = lines[line_number + 2];
-        if leader_line.contains(username) {
-            return_data.party_info = Some(PartyInfo{
-                players: vec![String::from(username)],
-                user_job: String::from("LEADER")
-            })
-        }else{
-            let leader = match extract_party_leader(leader_line.as_str()){
-                Some(leader_id) => leader_id,
-                None => String::from("some error")
-            };
-            if leader != "some error" {
-                return_data.party_info = Some(PartyInfo{
-                    players: vec![String::from(leader)],
-                    user_job: String::from("OTHER")
-                });
-            }
-        }; // the leader line
-        
-        // six times run
-        for _ in 0..6 {
-            let next_line = lines[line_number + 1];
-            if next_line.contains("Party Moderators") { 
-                let moderators = match extract_party_moderators(next_line.as_str()){
-                    Some(moderators) => moderators,
-                    None => vec![]
-                };
-                if let Some(party_info) = return_data.party_info {
-                    party_info.players.extend(moderators);
-                    return_data.party_info = Some(party_info);
-
+    if is_pl {
+        let mut is_in_party = true;
+        for message in useful_lines {
+            for pattern in &logRegex::get_user_leave_patterns() {
+                if pattern.is_match(&message) {
+                    return_data.party_info = None;
+                    is_in_party = false;
+                    // the party do not include you
+                    break;
                 }
-            }else if next_line.contains("Party Members") {
-                let members = match extract_party_members(next_line.as_str()){
-                    Some(members) => members,
-                    None => vec![]
+            }
+        }
+
+        if is_in_party {
+            // user used pl command
+            // line_number = all_line - last_line - 1
+            let line_number: usize = lines.len() - last_pl_line_number - 1;
+            // +2 and it's party leader
+            let leader_line = lines[line_number + 2];
+            if leader_line.contains(username) {
+                return_data.party_info = Some(PartyInfo {
+                    players: vec![String::from(username)],
+                    user_job: String::from("LEADER"),
+                })
+            } else {
+                let leader = match extract_party_leader(leader_line.as_str()) {
+                    Some(leader_id) => leader_id,
+                    None => String::from("some error"),
                 };
-                if let Some(party_info) = return_data.party_info {
-                    party_info.players.extend(members);
-                    return_data.party_info = Some(party_info);
-                } 
+                if leader != "some error" {
+                    return_data.party_info = Some(PartyInfo {
+                        players: vec![String::from(leader)],
+                        user_job: String::from("OTHER"),
+                    });
+                }
+            }; // the leader line
+
+            // six times run
+            for _ in 0..6 {
+                let next_line = lines[line_number + 1];
+                if next_line.contains("Party Moderators") {
+                    let moderators = match extract_party_moderators(next_line.as_str()) {
+                        Some(moderators) => moderators,
+                        None => vec![],
+                    };
+                    if let Some(party_info) = return_data.party_info {
+                        party_info.players.extend(moderators);
+                        return_data.party_info = Some(party_info);
+                    }
+                } else if next_line.contains("Party Members") {
+                    let members = match extract_party_members(next_line.as_str()) {
+                        Some(members) => members,
+                        None => vec![],
+                    };
+                    if let Some(party_info) = return_data.party_info {
+                        party_info.players.extend(members);
+                        return_data.party_info = Some(party_info);
+                    }
+                }
             }
         }
 
         // Processing useful information
-        for message in useful_lines {
-            
-        }
     };
     return_data
 }
 
 fn get_latest_log_file(log_dir_path: &str) -> String {
-    let message: String = match fs::read_to_string(get_latest_log_path(log_dir_path)){
+    let message: String = match fs::read_to_string(get_latest_log_path(log_dir_path)) {
         Ok(file) => file,
-        Err(e) => format!("Error {}", e)
+        Err(e) => format!("Error {}", e),
     };
     message
 }
 
 fn get_latest_log_path(log_dir_path: &str) -> String {
     let mut latest_log_file = LATEST_LOG_FILE.lock().unwrap();
-    if (current_timestamp() - latest_log_file.timestamp) > 60_000 || latest_log_file.path == "null" {
+    if (current_timestamp() - latest_log_file.timestamp) > 60_000 || latest_log_file.path == "null"
+    {
         // Get latest log file
         let mut log_files: Vec<PathBuf> = Vec::new();
 
         let files = match fs::read_dir(log_dir_path) {
-            Ok(files)  => files,
+            Ok(files) => files,
             Err(_e) => {
                 print!("Have some error when read dir");
-                return format!("Error")
+                return format!("Error");
             }
-        }; 
+        };
 
-        for file in files{
+        for file in files {
             let file = match file {
                 Ok(file) => file,
-                Err(_e)=>{
+                Err(_e) => {
                     print!("Have some error when read file");
-                    return format!("Error")
-                }  
+                    return format!("Error");
+                }
             };
             let path = file.path();
             if path.is_file() {
-                if let Some(file_name) = path.file_name(){
-                    if let Some(file_name_str) = file_name.to_str(){
-                        if file_name_str.ends_with(".log"){
+                if let Some(file_name) = path.file_name() {
+                    if let Some(file_name_str) = file_name.to_str() {
+                        if file_name_str.ends_with(".log") {
                             log_files.push(path.clone());
-                            if file_name_str == "latest.log" {            
-                                return path.to_str().unwrap_or("null").to_string()
+                            if file_name_str == "latest.log" {
+                                return path.to_str().unwrap_or("null").to_string();
                             }
                         }
                     }
@@ -236,44 +242,45 @@ fn get_latest_log_path(log_dir_path: &str) -> String {
             }
         }
 
-        let mut latest_file = LatestFile{
+        let mut latest_file = LatestFile {
             path: String::from(""),
             gap: 0,
         };
         let now: i64 = current_timestamp();
 
-        for file in log_files{
+        for file in log_files {
             let latest_change = match get_modification_time(&file) {
                 Some(change_time) => {
-                    let timestamp_milliseconds: i64 = change_time.duration_since(UNIX_EPOCH)
+                    let timestamp_milliseconds: i64 = change_time
+                        .duration_since(UNIX_EPOCH)
                         .unwrap_or_default()
                         .as_millis() as i64;
-                    
+
                     timestamp_milliseconds
-                },
+                }
                 None => {
                     eprintln!("Failed to get modification time");
-                    return format!("error")
+                    return format!("error");
                 }
             };
 
             let gap = latest_change - now;
-            if gap < latest_file.gap { //laster
-                latest_file = LatestFile{
+            if gap < latest_file.gap {
+                //laster
+                latest_file = LatestFile {
                     path: file.to_str().unwrap_or("null").to_string(),
-                    gap
+                    gap,
                 }
             };
         }
-        *latest_log_file = LogFile{
+        *latest_log_file = LogFile {
             timestamp: now,
-            path: latest_file.path.clone()
+            path: latest_file.path.clone(),
         };
         latest_log_file.path.clone()
-    }else{
-        return latest_log_file.path.clone(); 
+    } else {
+        return latest_log_file.path.clone();
     }
-
 }
 
 fn current_timestamp() -> i64 {
@@ -300,4 +307,3 @@ fn get_modification_time(file_path: &PathBuf) -> Option<SystemTime> {
     let metadata = fs::metadata(file_path).ok()?;
     metadata.modified().ok()
 }
-
