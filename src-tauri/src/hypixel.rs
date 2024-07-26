@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use tauri::api::dialog::MessageDialogBuilder;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -132,6 +133,7 @@ pub fn get_latest_info(log_dir_path: &str, username:&str) -> ReturnData {
             break; // No need to continue after finding the last occurrence
         }
     }
+    useful_lines.reverse();
     if is_pl{
         // user used pl command
         // line_number = all_line - last_line - 1
@@ -179,6 +181,11 @@ pub fn get_latest_info(log_dir_path: &str, username:&str) -> ReturnData {
                     return_data.party_info = Some(party_info);
                 } 
             }
+        }
+
+        // Processing useful information
+        for message in useful_lines {
+            
         }
     };
     return_data
