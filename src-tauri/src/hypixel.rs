@@ -1,13 +1,28 @@
 use lazy_static::lazy_static;
-use std::fmt::format;
-use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::fs::{self, File};
+use std::fs::{self};
+use serde::Serialize;
+use regex::Regex;
 
+use crate::logRegex::{extract_party_leader, extract_party_members, extract_party_moderators, get_useful_party_lines_patterns};
 
-struct PlayerData {
+#[derive(Serialize)]
+pub struct PartyInfo{
+    user_job: String, // leader other
+    players: Vec<String>
+}
+
+#[derive(Serialize)]
+pub struct Location {
+    game_type: String,
+    server_type: String, // "LOBBY" or "GAME", if "server" starts with "dynamiclobby", it's "LOBBY"
+    game_mode: Option<String>, // "BEDWARS_FOUR_FOUR" etc.
+}
+
+#[derive(Serialize)]
+pub struct PlayerData {
     name: String,
     rank: String,
     bw_fkdr: f64,
@@ -24,6 +39,14 @@ struct LatestFile{
     gap: i64,
 }
 
+#[derive(Serialize)]
+pub struct ReturnData{
+    player_data: Option<PlayerData>,
+    location: Location,
+    party_info: Option<PartyInfo>
+}
+
+
 lazy_static! {
     static ref LOCATION: Mutex<String> = Mutex::new(String::from("LOBBY"));
     static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(vec![]);
@@ -37,8 +60,128 @@ lazy_static! {
 }
 
 #[tauri::command]
-pub fn get_latest_location(log_dir_path: &str) -> String {
-    get_latest_log_file(log_dir_path)
+pub fn get_latest_info(log_dir_path: &str, username:&str) -> ReturnData {
+    let mut return_data = ReturnData{
+         player_data: todo!(), 
+         location: todo!(), 
+         party_info: None 
+    };
+
+    
+    let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
+
+    let file_content = get_latest_log_file(log_dir_path);
+    let lines: Vec<String> = file_content.lines().map(|line| line.to_string()).collect();
+    // Get file value
+    let reversed_lines: Vec<&String> = lines.iter().rev().collect();
+
+    // --party list--
+    // “[CHAT] Party Members” and the third line after that is Party leader
+    // the fifth line is Party Members/Moderators
+    // --join and left--
+    // [someone joined the party.][someone加入了组队。]
+    // [someone has left the party.][someone离开了组队.]
+    // [You have joined someone's party!][你加入了someone]的组队！]
+    // [You left the party.][你离开了组队。]
+    // --kick--
+    // [someone has been removed from the party.][someone已被移出组队。]
+    // [You have been kicked from the party by someone][你已被someone踢出组队] // no "." or "。"
+    // [Kicked someone because they were offline.][someone已断开连接， 被移出你的组队。]
+    // --transfer--
+    // [The party was transferred to someone by someone][someone将组队移交给了someone]//no "."or"。"
+    // --disband--
+    // [someone has disbanded the party!][someone解散了组队！]
+    // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。// --party list--
+    // “[CHAT] Party Members” and the third line after that is Party leader
+    // the fifth line is Party Members/Moderators
+    // --join and left--
+    // [someone joined the party.][someone加入了组队。]
+    // [someone has left the party.][someone离开了组队.]
+    // [You have joined someone's party!][你加入了someone]的组队！]
+    // [You left the party.][你离开了组队。]
+    // --kick--
+    // [someone has been removed from the party.][someone已被移出组队。]
+    // [You have been kicked from the party by someone][你已被someone踢出组队] // no "." or "。"
+    // [Kicked someone because they were offline.][someone已断开连接， 被移出你的组队。]
+    // --transfer--
+    // [The party was transferred to someone by someone][someone将组队移交给了someone]//no "."or"。"
+    // --disband--
+    // [someone has disbanded the party!][someone解散了组队！]
+    // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。]
+
+    let party = PartyInfo{
+        user_job: String::from("unknown"), 
+        players: vec![String::from("unknown")]
+    };
+    
+    let mut is_pl:bool = false;
+    let mut useful_lines:Vec<String> = vec![];
+    let mut last_pl_line_number:usize = 1;
+    for (index,line) in reversed_lines.iter().enumerate() {
+        let patterns = get_useful_party_lines_patterns();
+        for pattern in &patterns {
+            if pattern.is_match(&line) {
+                useful_lines.push(line.to_string());
+                break;
+            }
+        }
+        // find the last /pl
+        if line.contains("[CHAT] Party Members") {
+            last_pl_line_number = index;
+            is_pl = true;
+            break; // No need to continue after finding the last occurrence
+        }
+    }
+    if is_pl{
+        // user used pl command
+        // line_number = all_line - last_line - 1
+        let line_number: usize = lines.len() - last_pl_line_number - 1;
+        // +2 and it's party leader
+        let leader_line = lines[line_number + 2];
+        if leader_line.contains(username) {
+            return_data.party_info = Some(PartyInfo{
+                players: vec![String::from(username)],
+                user_job: String::from("LEADER")
+            })
+        }else{
+            let leader = match extract_party_leader(leader_line.as_str()){
+                Some(leader_id) => leader_id,
+                None => String::from("some error")
+            };
+            if leader != "some error" {
+                return_data.party_info = Some(PartyInfo{
+                    players: vec![String::from(leader)],
+                    user_job: String::from("OTHER")
+                });
+            }
+        }; // the leader line
+        
+        // six times run
+        for _ in 0..6 {
+            let next_line = lines[line_number + 1];
+            if next_line.contains("Party Moderators") { 
+                let moderators = match extract_party_moderators(next_line.as_str()){
+                    Some(moderators) => moderators,
+                    None => vec![]
+                };
+                if let Some(party_info) = return_data.party_info {
+                    party_info.players.extend(moderators);
+                    return_data.party_info = Some(party_info);
+
+                }
+            }else if next_line.contains("Party Members") {
+                let members = match extract_party_members(next_line.as_str()){
+                    Some(members) => members,
+                    None => vec![]
+                };
+                if let Some(party_info) = return_data.party_info {
+                    party_info.players.extend(members);
+                    return_data.party_info = Some(party_info);
+                } 
+            }
+        }
+    };
+    return_data
 }
 
 fn get_latest_log_file(log_dir_path: &str) -> String {
@@ -150,3 +293,4 @@ fn get_modification_time(file_path: &PathBuf) -> Option<SystemTime> {
     let metadata = fs::metadata(file_path).ok()?;
     metadata.modified().ok()
 }
+

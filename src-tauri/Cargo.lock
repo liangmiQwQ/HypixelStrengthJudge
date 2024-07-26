@@ -385,6 +385,7 @@ name = "bw_fkdr"
 version = "0.0.0"
 dependencies = [
  "lazy_static",
+ "regex",
  "serde",
  "serde_json",
  "tauri",
