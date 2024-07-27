@@ -1,8 +1,11 @@
 import UserInfo from "./UserInfo";
 import PartyInfo from "./PartyInfo";
 import PlayersInfo from "./PlayersInfo";
+import { invoke } from "@tauri-apps/api/tauri";
 
 export default function GameInfo() {
+  // invoke("get_latest_info");
+
   return (
     <div className="flex w-full h-full">
       <div className="w-7/12 flex justify-center h-full sm:p-2 sm:pl-3 sm:pr-[6px] md:p-3 md:pl-5 md:pr-[10px] lg:p-7 lg:pl-10 lg:pr-5">

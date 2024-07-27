@@ -6,12 +6,11 @@ import useConfig from "../store/config";
 import { selectValue } from "../libs/accentColors";
 import { useEffect, useMemo, useRef } from "react";
 import { os } from "@tauri-apps/api";
-import { Value } from "@radix-ui/themes/src/components/data-list.js";
 
 export default function NavBar() {
   const { t } = useTranslation();
-  const { setAccentColor, setHypApiKey, setLogPath, setLanguage } = useConfig();
-  const { accentColor, hypApiKey, logPath, language } = useConfig();
+  const { setAccentColor, setHypApiKey, setLogPath, setLanguage, setUsername } = useConfig();
+  const { accentColor, hypApiKey, logPath, language, username } = useConfig();
 
   const isWindows = useRef(false);
   useEffect(() => {
@@ -50,7 +49,7 @@ export default function NavBar() {
             <IoMdSettings size={25} />
           </IconButton>
         </Popover.Trigger>
-        <Popover.Content className="w-80 flex flex-col gap-1">
+        <Popover.Content className="w-[345px] flex flex-col gap-1">
           <SettingOption
             tipsText={t("language")}
             optionType="select"
@@ -59,30 +58,39 @@ export default function NavBar() {
               { name: t("en"), id: "en" },
             ]}
             defaultValue={memoizedLanguage}
-            onValueChange={(value: any) => setLanguage(value as "zh" | "en")}
+            onValueChange={setLanguage}
           />
           <SettingOption
             tipsText={t("accentColor")}
             optionType="select"
             selectValue={selectValue}
             defaultValue={memoizedAccentColor}
-            onValueChange={(value: any) => setAccentColor(value)}
+            onValueChange={setAccentColor}
           />
           <SettingOption
             tipsText={t("logPath")}
             optionType="input"
+            defaultValue={logPath}
             placeholder={
               isWindows.current
                 ? "C:\\\\Users\\Admin\\AppData\\.minecraft\\logs"
                 : "~/.minecraft/logs"
             }
-            onValueChange={(value: any) => setLogPath(value)}
+            onValueChange={setLogPath}
           />
           <SettingOption
             tipsText={t("hypApiKey")}
             optionType="input"
             placeholder="xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            onValueChange={(value: any) => setHypApiKey(value)}
+            defaultValue={hypApiKey}
+            onValueChange={setHypApiKey}
+          />
+          <SettingOption
+            tipsText={t("username")}
+            optionType="input"
+            placeholder="Steve"
+            defaultValue={username}
+            onValueChange={setUsername}
           />
         </Popover.Content>
       </Popover.Root>

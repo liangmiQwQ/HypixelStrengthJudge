@@ -1,32 +1,15 @@
 import { Theme } from "@radix-ui/themes";
-import "../global.css"
-import '@radix-ui/themes/styles.css';
+import "../global.css";
+import "@radix-ui/themes/styles.css";
 import NavBar from "./NavBar";
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-import languages from "../language/languages";
+import { initI18n } from "../language/languages";
 import useConfig from "../store/config";
 import GameInfo from "./Main/GameInfo";
 
 export default function App() {
-  const { accentColor, language } = useConfig()
+  const { accentColor, language } = useConfig();
 
-  console.log({
-    resources: {
-      ...languages
-    }
-  })
-  i18n.use(initReactI18next).init({
-    resources: {
-      ...languages
-    },
-    lng: language, // if you're using a language detector, do not define the lng option
-    fallbackLng: language,
-    interpolation: {
-      escapeValue: false // react already safes from xss => https://www.i18next.com/translation-function/interpolation#unescape
-    }
-  })
-
+  initI18n(language);
 
   return (
     <Theme appearance="light" className="rounded-lg overflow-hidden" accentColor={accentColor}>
@@ -37,6 +20,5 @@ export default function App() {
         </div>
       </div>
     </Theme>
-  )
+  );
 }
-
