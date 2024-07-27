@@ -126,12 +126,13 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             }
         }
         // find the last /pl
-        if line.contains("[CHAT] Party Members") {
+        if line.contains("[CHAT] Party Members ") {
             last_pl_line_number = index;
             is_pl = true;
             break; // No need to continue after finding the last occurrence
         }
     }
+
     useful_lines.reverse();
     if is_pl {
         let mut is_in_party = true;
@@ -146,9 +147,16 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             }
         }
 
+        /*
+        1 something 0             1 something 0
+        2 something 1             2 nothing   1
+        3 something 2 ==reverse=> 3 something 2 => {index:1, len: 5} => real_index = all_line - last_line - 1
+        4 nothing   3             4 something 3
+        5 something 4             5 something 4
+         */
+
         if is_in_party {
             // user used pl command
-            // line_number = all_line - last_line - 1
             let line_number: usize = lines.len() - last_pl_line_number - 1;
             // +2 and it's party leader
             let leader_line = &lines[line_number + 2];
@@ -171,8 +179,8 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             }; // the leader line
 
             // six times run
-            for _ in 0..6 {
-                let next_line = &lines[line_number + 1];
+            for add_number in 0..6 {
+                let next_line = &lines[line_number + 1 + add_number];
                 if next_line.contains("Party Moderators:") {
                     let moderators = match extract_party_moderators(next_line.as_str()) {
                         Some(moderators) => moderators,
@@ -264,7 +272,8 @@ fn get_latest_log_file(log_dir_path: &str) -> String {
 
 fn get_latest_log_path(log_dir_path: &str) -> String {
     let mut latest_log_file = LATEST_LOG_FILE.lock().unwrap();
-    if (current_timestamp() - latest_log_file.timestamp) > 60_000 || latest_log_file.path == "null"
+    if (current_timestamp() - latest_log_file.timestamp) > 60_000
+        || latest_log_file.path == "unknown"
     {
         // Get latest log file
         let mut log_files: Vec<PathBuf> = Vec::new();
@@ -322,7 +331,7 @@ fn get_latest_log_path(log_dir_path: &str) -> String {
                 }
             };
 
-            let gap = latest_change - now;
+            let gap = now - latest_change;
             if gap < latest_file.gap {
                 //laster
                 latest_file = LatestFile {

@@ -57,7 +57,7 @@ pub fn extract_party_leader(line: &str) -> Option<String> {
     let re = Regex::new(r"\[CHAT\] Party Leader: (?:\[.*\])?(?:\s)?(\w*)").unwrap();
 
     re.captures(line)
-        .and_then(|caps| caps.get(3))
+        .and_then(|caps| caps.get(1))
         .map(|match_| match_.as_str().to_string())
 }
 

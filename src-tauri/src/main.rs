@@ -4,10 +4,6 @@
 mod hypixel;
 pub mod log_regex;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("hello, {}! you've been greeted from rust!", name)
-}
 
 fn main() {
     tauri::Builder::default()
