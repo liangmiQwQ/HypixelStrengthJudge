@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
@@ -115,16 +115,20 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。]
 
     let mut is_pl: bool = false;
-    let mut useful_lines: Vec<String> = vec![];
     let mut last_pl_line_number: usize = 1;
+    let mut useful_lines: Vec<String> = vec![];
+    let useful_party_lines_patterns = get_useful_party_lines_patterns();
+
     for (index, line) in reversed_lines.iter().enumerate() {
-        let patterns = get_useful_party_lines_patterns();
+        let patterns = useful_party_lines_patterns.clone();
+
         for pattern in &patterns {
             if pattern.is_match(&line) {
                 useful_lines.push(line.to_string());
                 break;
             }
         }
+
         // find the last /pl
         if line.contains("[CHAT] Party Members ") {
             last_pl_line_number = index;

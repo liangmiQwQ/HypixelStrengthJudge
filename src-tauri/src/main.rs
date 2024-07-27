@@ -3,11 +3,10 @@
 
 mod hypixel;
 pub mod log_regex;
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet, hypixel::get_latest_info])
+        .invoke_handler(tauri::generate_handler![hypixel::get_latest_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
