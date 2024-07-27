@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 export default function UserInfo() {
   const { t } = useTranslation();
 
-  const [state, setState] = useState<"success" | "needLogPath" | "needKey">("needLogPath");
+  const [state, setState] = useState<"success" | "needLogPath" | "needUserName" | "needKey">(
+    "needLogPath"
+  );
 
   return (
     <div

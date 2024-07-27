@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "bw_fkdr",
+    "productName": "Hypixel Strength Judge",
     "version": "0.0.0"
   },
   "tauri": {
