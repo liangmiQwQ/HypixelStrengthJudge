@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
