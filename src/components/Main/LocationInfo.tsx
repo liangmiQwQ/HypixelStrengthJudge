@@ -2,16 +2,15 @@ import { Heading } from "@radix-ui/themes";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export default function PlayersInfo() {
+export default function LocationInfo() {
   const { t } = useTranslation();
 
-  const [state, setState] = useState<"success" | "needWhoCommand" | "needLogPath" | "needKey">(
-    "needKey"
-  );
+  const [state, setState] = useState<"success" | "needLogPath">("needLogPath");
+
   return (
     <div
       className={
-        "w-full p-3 min-h-full info-shadow shadow-slate-600 rounded-lg" +
+        "w-full p-3 h-full info-shadow shadow-slate-600 rounded-lg" +
         (state === "success" ? "" : " flex justify-center items-center flex-col")
       }
     >
