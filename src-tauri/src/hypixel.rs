@@ -185,63 +185,76 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             }
         }
 
-        // 340ms need some change
         if is_in_party {
             // Processing useful information
+            let party_join_patterns = get_party_join_patterns();
+            let party_leave_patterns = get_party_leave_patterns();
+            let job_change_patterns = get_job_change_patterns();
+
+            let start_time = Instant::now();
             for message in useful_lines.party_lines.iter() {
                 let mut is_message_used = false;
 
                 // someone joined
-                for pattern in get_party_join_patterns() {
-                    if let Some(join_player) = pattern
-                        .captures(message)
-                        .and_then(|caps| caps.get(1))
-                        .map(|match_| match_.as_str().to_string())
-                    {
-                        is_message_used = true;
-                        if let Some(party_info) = &mut return_data.party_info {
-                            party_info.players.push(join_player);
-                        };
-                    }
-                }
-
-                if !is_message_used {
-                    // some one left
-                    for pattern in get_party_leave_patterns() {
-                        if let Some(leave_player) = pattern
+                for pattern in party_join_patterns.clone() {
+                    // to do (use is_match)
+                    if pattern.is_match(message) {
+                        if let Some(join_player) = pattern
                             .captures(message)
                             .and_then(|caps| caps.get(1))
                             .map(|match_| match_.as_str().to_string())
                         {
                             is_message_used = true;
                             if let Some(party_info) = &mut return_data.party_info {
-                                party_info
-                                    .players
-                                    .retain(|player: &String| player != &leave_player);
+                                party_info.players.push(join_player);
                             };
                         }
                     }
                 }
 
                 if !is_message_used {
-                    for pattern in get_job_change_patterns() {
-                        if let Some(leader_player) = pattern
-                            .captures(message)
-                            .and_then(|caps| caps.get(1))
-                            .map(|match_| match_.as_str().to_string())
-                        {
-                            if let Some(party_info) = &mut return_data.party_info {
-                                if leader_player == username {
-                                    // the user is the leader
-                                    party_info.user_job = String::from("LEADER")
-                                } else {
-                                    party_info.user_job = String::from("OTHER")
+                    // some one left
+                    for pattern in party_leave_patterns.clone() {
+                        if pattern.is_match(message) {
+                            if let Some(leave_player) = pattern
+                                .captures(message)
+                                .and_then(|caps| caps.get(1))
+                                .map(|match_| match_.as_str().to_string())
+                            {
+                                is_message_used = true;
+                                if let Some(party_info) = &mut return_data.party_info {
+                                    party_info
+                                        .players
+                                        .retain(|player: &String| player != &leave_player);
+                                };
+                            }
+                        }
+                    }
+                }
+
+                if !is_message_used {
+                    for pattern in job_change_patterns.clone() {
+                        if pattern.is_match(message) {
+                            if let Some(leader_player) = pattern
+                                .captures(message)
+                                .and_then(|caps| caps.get(1))
+                                .map(|match_| match_.as_str().to_string())
+                            {
+                                if let Some(party_info) = &mut return_data.party_info {
+                                    if leader_player == username {
+                                        // the user is the leader
+                                        party_info.user_job = String::from("LEADER")
+                                    } else {
+                                        party_info.user_job = String::from("OTHER")
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+            let elapsed = start_time.elapsed();
+            println!("Find The Party Members Run Time: {:?}", elapsed);
         }
     };
     return_data
@@ -306,17 +319,17 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                         addon_useful_party_lines.push(line.to_string());
                         break;
                     }
-                    for pattern in &patterns {
-                        if pattern.is_match(&line) {
-                            // latest_log_file
-                            //     .useful_line
-                            //     .party_lines
-                            //     .push(line.to_string());
-                            // ⬆️ that is error
-                            addon_useful_party_lines.push(line.to_string());
-                            break;
-                        }
-                    }
+                    // for pattern in &patterns {
+                    //     if pattern.is_match(&line) {
+                    //         // latest_log_file
+                    //         //     .useful_line
+                    //         //     .party_lines
+                    //         //     .push(line.to_string());
+                    //         // ⬆️ that is error
+                    //         addon_useful_party_lines.push(line.to_string());
+                    //         break;
+                    //     }
+                    // }
                 }
             }
         }
