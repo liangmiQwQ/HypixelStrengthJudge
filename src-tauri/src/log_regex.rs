@@ -48,8 +48,8 @@ pub fn get_party_leave_patterns() -> Vec<Regex> {
 }
 pub fn get_job_change_patterns() -> Vec<Regex> {
     vec![
-        Regex::new(r"\[CHAT\] The party was transferred to (?:\[.*\])?(?:\s)?(.*) by (?:\[.*\])?(?:\s)?(.*)").unwrap(), // English
-        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)将组队移交给了(?:\[.*\])?(?:\s)?(.*)").unwrap(), // Chinese (no "." or "。")
+        Regex::new(r"\[CHAT\] The party was transferred to (?:\[.*\])?(?:\s)?(.*) by (?:\[.*\])?(?:\s)?(?:.*)").unwrap(), // English
+        Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(?:.*)将组队移交给了(?:\[.*\])?(?:\s)?(.*)").unwrap(), // Chinese (no "." or "。")
     ]
 }
 

@@ -5,11 +5,13 @@ use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::utils::pattern;
 
-// use log_regex::{
-//     extract_party_leader, extract_party_members, extract_party_moderators,
-//     get_useful_party_lines_patterns,
-// };
+use crate::log_regex::{
+    extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
+    get_party_join_patterns, get_party_leave_patterns, get_useful_party_lines_patterns,
+    get_user_leave_patterns,
+};
 
 #[derive(Serialize)]
 pub struct PartyInfo {
@@ -132,7 +134,7 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     if is_pl {
         let mut is_in_party = true;
         for message in useful_lines {
-            for pattern in &log_regexx::get_user_leave_patterns() {
+            for pattern in get_user_leave_patterns() {
                 if pattern.is_match(&message) {
                     return_data.party_info = None;
                     is_in_party = false;
@@ -191,7 +193,67 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             }
         }
 
-        // Processing useful information
+        if is_in_party {
+            // Processing useful information
+            for message in useful_lines {
+                let mut is_message_used = false;
+                let job_change_patterns = get_job_change_patterns();
+
+                // someone joined
+                for pattern in get_party_join_patterns() {
+                    if let Some(join_player) = pattern
+                        .captures(&message)
+                        .and_then(|caps| caps.get(1))
+                        .map(|match_| match_.as_str().to_string())
+                    {
+                        is_message_used = true;
+                        if let Some(party_info) = return_data.party_info {
+                            party_info.players.push(join_player);
+                            return_data.party_info = Some(party_info)
+                        };
+                    }
+                }
+
+                if !is_message_used {
+                    // some one left
+                    for pattern in get_party_leave_patterns() {
+                        if let Some(leave_player) = pattern
+                            .captures(&message)
+                            .and_then(|caps| caps.get(1))
+                            .map(|match_| match_.as_str().to_string())
+                        {
+                            is_message_used = true;
+                            if let Some(party_info) = return_data.party_info {
+                                party_info
+                                    .players
+                                    .retain(|player: &String| player != &leave_player);
+                                return_data.party_info = Some(party_info)
+                            };
+                        }
+                    }
+                }
+
+                if !is_message_used {
+                    for pattern in get_job_change_patterns() {
+                        if let Some(leader_player) = pattern
+                            .captures(&message)
+                            .and_then(|caps| caps.get(1))
+                            .map(|match_| match_.as_str().to_string())
+                        {
+                            if let Some(party_info) = return_data.party_info {
+                                if leader_player == username {
+                                    // the user is the leader
+                                    party_info.user_job = String::from("LEADER")
+                                } else {
+                                    party_info.user_job = String::from("OTHER")
+                                }
+                                return_data.party_info = Some(party_info)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     };
     return_data
 }
