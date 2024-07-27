@@ -2,10 +2,10 @@ import { Heading } from "@radix-ui/themes";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export default function LocationInfo() {
+export default function UserInfo() {
   const { t } = useTranslation();
 
-  const [state, setState] = useState<"success" | "needLogPath">("needLogPath");
+  const [state, setState] = useState<"success" | "needLogPath" | "needKey">("needLogPath");
 
   return (
     <div
@@ -19,7 +19,7 @@ export default function LocationInfo() {
         t("info_" + state)
           .split("\n")
           .map((line, index) => (
-            <Heading as="h3" key={index}>
+            <Heading as="h3" key={index} className="text-center">
               {line}
             </Heading>
           ))}

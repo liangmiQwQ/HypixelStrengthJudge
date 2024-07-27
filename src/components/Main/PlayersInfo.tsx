@@ -20,7 +20,7 @@ export default function PlayersInfo() {
         t("info_" + state)
           .split("\n")
           .map((line, index) => (
-            <Heading as="h3" key={index}>
+            <Heading as="h3" key={index} className="text-center">
               {line}
             </Heading>
           ))}

@@ -1,4 +1,4 @@
-import LocationInfo from "./LocationInfo";
+import UserInfo from "./UserInfo";
 import PartyInfo from "./PartyInfo";
 import PlayersInfo from "./PlayersInfo";
 
@@ -15,7 +15,7 @@ export default function GameInfo() {
           <PartyInfo />
         </div>
         <div className="h-1/2 w-full sm:pt-1 md:pt-2 lg:pt-4">
-          <LocationInfo />
+          <UserInfo />
         </div>
       </div>
     </div>
