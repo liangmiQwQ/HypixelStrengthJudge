@@ -1,11 +1,9 @@
 use lazy_static::lazy_static;
-use regex::Regex;
 use serde::Serialize;
 use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::utils::pattern;
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
@@ -66,12 +64,16 @@ lazy_static! {
 #[tauri::command]
 pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     let mut return_data = ReturnData {
-        player_data: todo!(),
-        location: todo!(),
+        player_data: None,
+        location: Location {
+            game_type: String::from("UNKNOWN"),
+            server_type: String::from("UNKNOWN"),
+            game_mode: None,
+        },
         party_info: None,
     };
 
-    let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
+    // let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
 
     let file_content = get_latest_log_file(log_dir_path);
     let lines: Vec<String> = file_content.lines().map(|line| line.to_string()).collect();
@@ -133,9 +135,9 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     useful_lines.reverse();
     if is_pl {
         let mut is_in_party = true;
-        for message in useful_lines {
+        for message in useful_lines.iter() {
             for pattern in get_user_leave_patterns() {
-                if pattern.is_match(&message) {
+                if pattern.is_match(message) {
                     return_data.party_info = None;
                     is_in_party = false;
                     // the party do not include you
@@ -149,7 +151,7 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             // line_number = all_line - last_line - 1
             let line_number: usize = lines.len() - last_pl_line_number - 1;
             // +2 and it's party leader
-            let leader_line = lines[line_number + 2];
+            let leader_line = &lines[line_number + 2];
             if leader_line.contains(username) {
                 return_data.party_info = Some(PartyInfo {
                     players: vec![String::from(username)],
@@ -170,24 +172,22 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
 
             // six times run
             for _ in 0..6 {
-                let next_line = lines[line_number + 1];
-                if next_line.contains("Party Moderators") {
+                let next_line = &lines[line_number + 1];
+                if next_line.contains("Party Moderators:") {
                     let moderators = match extract_party_moderators(next_line.as_str()) {
                         Some(moderators) => moderators,
                         None => vec![],
                     };
-                    if let Some(party_info) = return_data.party_info {
+                    if let Some(party_info) = &mut return_data.party_info {
                         party_info.players.extend(moderators);
-                        return_data.party_info = Some(party_info);
                     }
-                } else if next_line.contains("Party Members") {
+                } else if next_line.contains("Party Members:") {
                     let members = match extract_party_members(next_line.as_str()) {
                         Some(members) => members,
                         None => vec![],
                     };
-                    if let Some(party_info) = return_data.party_info {
+                    if let Some(party_info) = &mut return_data.party_info {
                         party_info.players.extend(members);
-                        return_data.party_info = Some(party_info);
                     }
                 }
             }
@@ -195,21 +195,19 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
 
         if is_in_party {
             // Processing useful information
-            for message in useful_lines {
+            for message in useful_lines.iter() {
                 let mut is_message_used = false;
-                let job_change_patterns = get_job_change_patterns();
 
                 // someone joined
                 for pattern in get_party_join_patterns() {
                     if let Some(join_player) = pattern
-                        .captures(&message)
+                        .captures(message)
                         .and_then(|caps| caps.get(1))
                         .map(|match_| match_.as_str().to_string())
                     {
                         is_message_used = true;
-                        if let Some(party_info) = return_data.party_info {
+                        if let Some(party_info) = &mut return_data.party_info {
                             party_info.players.push(join_player);
-                            return_data.party_info = Some(party_info)
                         };
                     }
                 }
@@ -218,16 +216,15 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
                     // some one left
                     for pattern in get_party_leave_patterns() {
                         if let Some(leave_player) = pattern
-                            .captures(&message)
+                            .captures(message)
                             .and_then(|caps| caps.get(1))
                             .map(|match_| match_.as_str().to_string())
                         {
                             is_message_used = true;
-                            if let Some(party_info) = return_data.party_info {
+                            if let Some(party_info) = &mut return_data.party_info {
                                 party_info
                                     .players
                                     .retain(|player: &String| player != &leave_player);
-                                return_data.party_info = Some(party_info)
                             };
                         }
                     }
@@ -236,18 +233,17 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
                 if !is_message_used {
                     for pattern in get_job_change_patterns() {
                         if let Some(leader_player) = pattern
-                            .captures(&message)
+                            .captures(message)
                             .and_then(|caps| caps.get(1))
                             .map(|match_| match_.as_str().to_string())
                         {
-                            if let Some(party_info) = return_data.party_info {
+                            if let Some(party_info) = &mut return_data.party_info {
                                 if leader_player == username {
                                     // the user is the leader
                                     party_info.user_job = String::from("LEADER")
                                 } else {
                                     party_info.user_job = String::from("OTHER")
                                 }
-                                return_data.party_info = Some(party_info)
                             }
                         }
                     }
