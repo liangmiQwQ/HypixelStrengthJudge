@@ -1,11 +1,24 @@
 import { Heading } from "@radix-ui/themes";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export default function PartyInfo() {
+interface PartyInfoProps {
+  partyInfo: PartyInfo | null;
+  otherThing?: string;
+}
+
+export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
   const { t } = useTranslation();
 
-  const [state, setState] = useState<"success" | "needPLCommand" | "needLogPath">("needPLCommand");
+  const state: "success" | "needPLCommand" | "needLogPath" | "needUsername" = useMemo(() => {
+    if (partyInfo !== null) {
+      return "success";
+    } else if (otherThing != undefined || otherThing != "") {
+      return otherThing as any;
+    } else {
+      return "needPLCommand";
+    }
+  }, [partyInfo]);
   return (
     <div
       className={
