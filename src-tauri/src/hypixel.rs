@@ -11,7 +11,7 @@ use crate::log_regex::{
     get_user_leave_patterns,
 };
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct PartyInfo {
     user_job: String, // leader other
     players: Vec<String>,
@@ -55,9 +55,9 @@ struct UsefulLines {
 
 #[derive(Serialize)]
 pub struct ReturnData {
-    player_data: Option<PlayerData>,
-    location: Location,
-    party_info: Option<PartyInfo>,
+    pub player_data: Option<PlayerData>,
+    pub location: Location,
+    pub party_info: Option<PartyInfo>,
 }
 
 lazy_static! {
