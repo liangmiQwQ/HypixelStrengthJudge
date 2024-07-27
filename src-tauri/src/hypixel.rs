@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
@@ -32,14 +32,25 @@ pub struct PlayerData {
     bw_level: u16,
     lobby_level: u16,
 }
-struct LogFile {
+struct LogFilePath {
     path: String,
     timestamp: i64,
+}
+
+struct LogFile {
+    last_line_number: usize,
+    useful_line: UsefulLines,
 }
 
 struct LatestFile {
     path: String,
     gap: i64,
+}
+
+#[derive(Clone)]
+struct UsefulLines {
+    pl_lines: Vec<String>,
+    party_lines: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -55,9 +66,16 @@ lazy_static! {
     static ref PLAYERS_DATA: Mutex<Vec<PlayerData>> = Mutex::new(vec![]);
     static ref USER_ID: Mutex<String> = Mutex::new(String::from(""));
     static ref PARTY_LIST: Mutex<Vec<String>> = Mutex::new(vec![]);
-    static ref LATEST_LOG_FILE: Mutex<LogFile> = Mutex::new(LogFile {
+    static ref LATEST_LOG_FILE_PATH: Mutex<LogFilePath> = Mutex::new(LogFilePath {
         path: String::from("unknown"),
         timestamp: current_timestamp(),
+    });
+    static ref LATEST_LOG_FILE: Mutex<LogFile> = Mutex::new(LogFile {
+        last_line_number: 0,
+        useful_line: UsefulLines {
+            pl_lines: vec![],
+            party_lines: vec![],
+        }
     });
 }
 
@@ -75,10 +93,7 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
 
     // let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
 
-    let file_content = get_latest_log_file(log_dir_path);
-    let lines: Vec<String> = file_content.lines().map(|line| line.to_string()).collect();
-    // Get file value
-    let reversed_lines: Vec<&String> = lines.iter().rev().collect();
+    let useful_lines = get_useful_lines(log_dir_path);
 
     // --party list--
     // “[CHAT] Party Members” and the third line after that is Party leader
@@ -114,66 +129,31 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     // [someone has disbanded the party!][someone解散了组队！]
     // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。]
 
-    let mut is_pl: bool = false;
-    let mut last_pl_line_number: usize = 1;
-    let mut useful_lines: Vec<String> = vec![];
-    let useful_party_lines_patterns = get_useful_party_lines_patterns();
+    let is_pl: bool = !useful_lines.pl_lines.is_empty(); // 修改1：简化判断
 
-    for (index, line) in reversed_lines.iter().enumerate() {
-        let patterns = useful_party_lines_patterns.clone();
-
-        for pattern in &patterns {
-            if pattern.is_match(&line) {
-                useful_lines.push(line.to_string());
-                break;
-            }
-        }
-
-        // find the last /pl
-        if line.contains("[CHAT] Party Members ") {
-            last_pl_line_number = index;
-            is_pl = true;
-            break; // No need to continue after finding the last occurrence
-        }
-    }
-
-    useful_lines.reverse();
     if is_pl {
         let mut is_in_party = true;
-        for message in useful_lines.iter() {
-            for pattern in get_user_leave_patterns() {
-                if pattern.is_match(message) {
-                    return_data.party_info = None;
-                    is_in_party = false;
-                    // the party do not include you
-                    break;
-                }
-            }
+        if useful_lines.pl_lines.iter().any(|message| {
+            get_user_leave_patterns()
+                .iter()
+                .any(|pattern| pattern.is_match(message))
+        }) {
+            return_data.party_info = None;
+            is_in_party = false;
         }
-
-        /*
-        1 something 0             1 something 0
-        2 something 1             2 nothing   1
-        3 something 2 ==reverse=> 3 something 2 => {index:1, len: 5} => real_index = all_line - last_line - 1
-        4 nothing   3             4 something 3
-        5 something 4             5 something 4
-         */
 
         if is_in_party {
             // user used pl command
-            let line_number: usize = lines.len() - last_pl_line_number - 1;
             // +2 and it's party leader
-            let leader_line = &lines[line_number + 2];
+            let leader_line = useful_lines.pl_lines[2].clone();
             if leader_line.contains(username) {
                 return_data.party_info = Some(PartyInfo {
                     players: vec![String::from(username)],
                     user_job: String::from("LEADER"),
                 })
             } else {
-                let leader = match extract_party_leader(leader_line.as_str()) {
-                    Some(leader_id) => leader_id,
-                    None => String::from("some error"),
-                };
+                let leader = extract_party_leader(leader_line.as_str())
+                    .unwrap_or_else(|| "some error".to_string());
                 if leader != "some error" {
                     return_data.party_info = Some(PartyInfo {
                         players: vec![String::from(leader)],
@@ -184,7 +164,7 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
 
             // six times run
             for add_number in 0..6 {
-                let next_line = &lines[line_number + 1 + add_number];
+                let next_line = useful_lines.pl_lines[1 + add_number].clone();
                 if next_line.contains("Party Moderators:") {
                     let moderators = match extract_party_moderators(next_line.as_str()) {
                         Some(moderators) => moderators,
@@ -205,9 +185,10 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             }
         }
 
+        // 340ms need some change
         if is_in_party {
             // Processing useful information
-            for message in useful_lines.iter() {
+            for message in useful_lines.party_lines.iter() {
                 let mut is_message_used = false;
 
                 // someone joined
@@ -274,10 +255,86 @@ fn get_latest_log_file(log_dir_path: &str) -> String {
     message
 }
 
-fn get_latest_log_path(log_dir_path: &str) -> String {
+fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
     let mut latest_log_file = LATEST_LOG_FILE.lock().unwrap();
-    if (current_timestamp() - latest_log_file.timestamp) > 60_000
-        || latest_log_file.path == "unknown"
+    let file_content = get_latest_log_file(log_dir_path);
+    let lines: Vec<String> = file_content.lines().map(|line| line.to_string()).collect();
+    let useful_party_lines_patterns = get_useful_party_lines_patterns();
+    // Get file value
+    let patterns = useful_party_lines_patterns.clone();
+    let reversed_lines: Vec<&String> = lines.iter().rev().collect();
+    let mut addon_useful_party_lines: Vec<String> = Vec::new();
+    for (index, line) in reversed_lines.iter().enumerate() {
+        // two method to break
+        // 1. pl, location(todo) and players(todo)'s lens all > 0 or != "" && from new lines
+        // 2. lines.len() - latest_log_file.last_line_number - 1 (the rev line of the last line) <= index
+        /*
+        1 something 0             1 something 0
+        2 something 1             2 nothing   1                         real_index = all_line_len - rev_index - 1
+        3 something 2 ==reverse=> 3 something 2 => {index:1, len: 5} => or
+        4 nothing   3             4 something 3                         rev_index = all_line_len - real_index - 1
+        5 something 4             5 something 4
+        */
+        if lines.len() - latest_log_file.last_line_number - 1 <= index {
+            break;
+        } else {
+            if line.contains("[CHAT] Party Members ") {
+                //pl lines
+                let real_index = lines.len() - index - 1;
+                // Ensure we do not exceed the bounds of the lines vector
+                latest_log_file.useful_line.pl_lines.clear();
+                for add_number in 0..7 {
+                    if real_index + add_number < lines.len() {
+                        latest_log_file
+                            .useful_line
+                            .pl_lines
+                            .push(lines[real_index + add_number].clone());
+                    } else {
+                        // Exit the loop if we exceed the bounds
+                        break;
+                    }
+                }
+                break; // some other things to add
+            } else {
+                for pattern in &patterns {
+                    if pattern.is_match(&line) {
+                        // latest_log_file
+                        //     .useful_line
+                        //     .party_lines
+                        //     .push(line.to_string());
+                        // ⬆️ that is error
+                        addon_useful_party_lines.push(line.to_string());
+                        break;
+                    }
+                    for pattern in &patterns {
+                        if pattern.is_match(&line) {
+                            // latest_log_file
+                            //     .useful_line
+                            //     .party_lines
+                            //     .push(line.to_string());
+                            // ⬆️ that is error
+                            addon_useful_party_lines.push(line.to_string());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    addon_useful_party_lines.reverse();
+    latest_log_file.last_line_number = lines.len() - 1;
+    latest_log_file
+        .useful_line
+        .party_lines
+        .extend(addon_useful_party_lines);
+
+    return latest_log_file.useful_line.clone();
+}
+
+fn get_latest_log_path(log_dir_path: &str) -> String {
+    let mut latest_log_file_path = LATEST_LOG_FILE_PATH.lock().unwrap();
+    if (current_timestamp() - latest_log_file_path.timestamp) > 30_000
+        || latest_log_file_path.path == "unknown"
     {
         // Get latest log file
         let mut log_files: Vec<PathBuf> = Vec::new();
@@ -344,13 +401,13 @@ fn get_latest_log_path(log_dir_path: &str) -> String {
                 }
             };
         }
-        *latest_log_file = LogFile {
+        *latest_log_file_path = LogFilePath {
             timestamp: now,
             path: latest_file.path.clone(),
         };
-        latest_log_file.path.clone()
+        latest_log_file_path.path.clone()
     } else {
-        return latest_log_file.path.clone();
+        return latest_log_file_path.path.clone();
     }
 }
 
