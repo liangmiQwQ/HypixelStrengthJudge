@@ -2,8 +2,9 @@ import UserInfo from "./UserInfo";
 import PartyInfo from "./PartyInfo";
 import PlayersInfo from "./PlayersInfo";
 import { invoke } from "@tauri-apps/api/tauri";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useConfig from "../../store/config";
+import { appWindow } from "@tauri-apps/api/window";
 
 export default function GameInfo() {
   // invoke("get_latest_info");
@@ -11,24 +12,41 @@ export default function GameInfo() {
   const { logPath, username } = useConfig();
   const [otherThing, setOtherThing] = useState("");
 
+  const runTimes = useRef(0);
+  const timer = useRef<number | undefined>();
+
   useEffect(() => {
-    const timer = setInterval(() => {
+    // if (runTimes) return;
+    runTimes.current++;
+    if (runTimes.current === 1) return;
+
+    const handleTimer = async () => {
+      await getLatestInfo();
+      const delay = (await appWindow.isFocused()) ? 2500 : 5000;
+      timer.current = setInterval(getLatestInfo, delay);
+    };
+
+    async function getLatestInfo() {
       if (logPath === "") {
         setOtherThing("needLogPath");
       } else if (username === "") {
         setOtherThing("needUsername");
       } else {
-        invoke("get_latest_info", { logDirPath: logPath, username }).then((info: unknown) => {
-          console.log(JSON.stringify((info as any as info).party_info));
-          if ((info as any as info).party_info != null) {
-            setPartyInfo((info as any as info).party_info);
-          }
-        });
+        const info: unknown = await invoke("get_latest_info", { logDirPath: logPath, username });
+        console.log(JSON.stringify((info as any as info).party_info));
+
+        setPartyInfo((info as any as info).party_info);
       }
-    }, 5000);
+    }
+
+    if (timer.current != undefined) {
+      clearInterval(timer.current);
+      timer.current = undefined;
+    }
+    handleTimer();
 
     return () => {
-      clearInterval(timer);
+      clearInterval(timer.current);
     };
   }, [logPath, username]);
 

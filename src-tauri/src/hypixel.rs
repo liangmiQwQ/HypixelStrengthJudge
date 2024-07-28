@@ -81,6 +81,9 @@ lazy_static! {
 
 #[tauri::command]
 pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
+    let start_time = Instant::now();
+
+    let get_useful_lines_start_time = Instant::now();
     let mut return_data = ReturnData {
         player_data: None,
         location: Location {
@@ -94,6 +97,11 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
     // let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
 
     let useful_lines = get_useful_lines(log_dir_path);
+    let stop_time = get_useful_lines_start_time.elapsed();
+    println!(
+        "[Strength Judge] [info] Getting useful lines in {:?}",
+        stop_time
+    );
 
     // --party list--
     // “[CHAT] Party Members” and the third line after that is Party leader
@@ -146,11 +154,14 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             // user used pl command
             // +2 and it's party leader
             let leader_line = useful_lines.pl_lines[2].clone();
-            if leader_line.contains(username) {
+            if leader_line
+                .to_uppercase()
+                .contains(username.to_uppercase().as_str())
+            {
                 return_data.party_info = Some(PartyInfo {
                     players: vec![String::from(username)],
                     user_job: String::from("LEADER"),
-                })
+                });
             } else {
                 let leader = extract_party_leader(leader_line.as_str())
                     .unwrap_or_else(|| "some error".to_string());
@@ -191,7 +202,6 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
             let party_leave_patterns = get_party_leave_patterns();
             let job_change_patterns = get_job_change_patterns();
 
-            let start_time = Instant::now();
             for message in useful_lines.party_lines.iter() {
                 let mut is_message_used = false;
 
@@ -241,7 +251,7 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
                                 .map(|match_| match_.as_str().to_string())
                             {
                                 if let Some(party_info) = &mut return_data.party_info {
-                                    if leader_player == username {
+                                    if leader_player.to_uppercase() == username.to_uppercase() {
                                         // the user is the leader
                                         party_info.user_job = String::from("LEADER")
                                     } else {
@@ -253,10 +263,13 @@ pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
                     }
                 }
             }
-            let elapsed = start_time.elapsed();
-            println!("Find The Party Members Run Time: {:?}", elapsed);
         }
     };
+    let elapsed = start_time.elapsed();
+    println!(
+        "[Strength Judge] [info] Getting latest info in {:?}",
+        elapsed
+    );
     return_data
 }
 
