@@ -1,10 +1,11 @@
 use lazy_static::lazy_static;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+use crate::libs::current_timestamp;
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
     get_party_join_patterns, get_party_leave_patterns, get_useful_party_lines_patterns,
@@ -24,14 +25,23 @@ pub struct Location {
     game_mode: Option<String>, // "BEDWARS_FOUR_FOUR" etc.
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PlayerData {
-    name: String,
-    rank: String,
-    bw_fkdr: f64,
-    bw_level: u16,
-    lobby_level: u16,
+    pub name: String,
+    pub rank: Rank,
+    pub bw_fkdr: String, // rust decimal problem so use string(format!)
+    pub bw_level: u16,
+    pub lobby_level: u16,
+    pub bblr: String, // the same reason as bw_fkdr
+    pub win_streak: u64,
 }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Rank {
+    pub name: String,               // vip vip+ default
+    pub plus_color: Option<String>, // #xxxxx
+}
+
 struct LogFilePath {
     path: String,
     timestamp: i64,
@@ -80,7 +90,11 @@ lazy_static! {
 }
 
 #[tauri::command]
-pub fn get_latest_info(log_dir_path: &str, username: &str) -> ReturnData {
+pub fn get_latest_info(
+    log_dir_path: &str,
+    username: &str,
+    app_handle: tauri::AppHandle,
+) -> ReturnData {
     let start_time = Instant::now();
 
     let get_useful_lines_start_time = Instant::now();
@@ -435,13 +449,6 @@ fn get_latest_log_path(log_dir_path: &str) -> String {
     } else {
         return latest_log_file_path.path.clone();
     }
-}
-
-fn current_timestamp() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64
 }
 
 fn get_modification_time(file_path: &PathBuf) -> Option<SystemTime> {
