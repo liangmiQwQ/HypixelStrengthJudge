@@ -1,5 +1,5 @@
-import { Heading } from "@radix-ui/themes";
-import { useMemo, useState } from "react";
+import { Heading, Table } from "@radix-ui/themes";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 interface PartyInfoProps {
@@ -36,19 +36,57 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
             </Heading>
           ))}
       {state == "success" && (
-        <div>
-          <Heading size="4">你 {partyInfo?.user_job === "LEADER" ? "是" : "不是"} 组队队长</Heading>
-          <Heading size="5">组队信息</Heading>
-          <div className="flex gap-2">
-            {partyInfo?.players.map((player, index) => {
+        <Table.Root className="w-full">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>ID</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>{t("bw_level")}</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>FKDR</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>BBLR</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {partyInfo?.players.map((item, index) => {
+              function PlayerName({ item }: { item: PartyPlayerData }) {
+                useEffect(() => {
+                  if (item.player_data?.rank.name.endsWith("+")) {
+                  }
+                }, [item]);
+                const [beforePlus, plus] = useMemo(() => {
+                  if (item.player_data?.rank.name.endsWith("+")) {
+                    return [item.player_data?.rank.name.slice(0, -1), "+"];
+                  } else {
+                    return [item.player_data?.rank.name, ""];
+                  }
+                }, [item]);
+                return (
+                  <>
+                    <span style={{ color: item.player_data?.rank.name_color as string }}>
+                      {"[" + beforePlus}
+                    </span>
+                    <span style={{ color: item.player_data?.rank.plus_color as string }}>
+                      {plus}
+                    </span>
+                    <span style={{ color: item.player_data?.rank.name_color as string }}>
+                      {"] " + item.name}
+                    </span>
+                  </>
+                );
+              }
+
               return (
-                <span key={player + index.toString()} className="text-lg font-medium">
-                  {player}
-                </span>
+                <Table.Row key={item.toString() + index.toString()}>
+                  <Table.RowHeaderCell>
+                    <PlayerName item={item}></PlayerName>
+                  </Table.RowHeaderCell>
+                  <Table.Cell>{item.player_data?.bw_level}</Table.Cell>
+                  <Table.Cell>{item.player_data?.bw_fkdr}</Table.Cell>
+                  <Table.Cell>{item.player_data?.bblr}</Table.Cell>
+                </Table.Row>
               );
             })}
-          </div>
-        </div>
+          </Table.Body>
+        </Table.Root>
       )}
     </div>
   );

@@ -18,6 +18,7 @@ const en = {
     info_needLogPath: "Please set the log path of Minecraft in the settings",
     info_needUsername: "Please set your Minecraft ID in the settings",
     info_needKey: "Please set your personal Hypixel API key in the settings",
+    bw_level: "BW Level",
   },
 };
 
@@ -36,6 +37,7 @@ const zh = {
     info_needLogPath: "请在设置中填写Minecraft的日志路径",
     info_needUsername: "请在设置中填写自己的游戏ID",
     info_needKey: "请在设置中填写您的Hypixel API key",
+    bw_level: "BW等级",
   },
 };
 

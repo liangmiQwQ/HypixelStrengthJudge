@@ -244,6 +244,11 @@ fn get_hypixel_lobby_level(network_exp: u64) -> u16 {
 }
 
 fn create_cache_file(cache_dir: PathBuf) -> Option<File> {
+    if let Err(e) = fs::create_dir_all(&cache_dir) {
+        println!("Can't create cache directory: {}", e);
+        return None;
+    }
+
     let file_path = cache_dir.join("api_cache.json");
 
     match File::create(file_path) {

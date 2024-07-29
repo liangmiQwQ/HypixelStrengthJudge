@@ -9,7 +9,7 @@ import { appWindow } from "@tauri-apps/api/window";
 export default function GameInfo() {
   // invoke("get_latest_info");
   const [partyInfo, setPartyInfo] = useState<PartyInfo | null>(null);
-  const { logPath, username } = useConfig();
+  const { logPath, username, hypApiKey } = useConfig();
   const [otherThing, setOtherThing] = useState("");
 
   const runTimes = useRef(0);
@@ -32,7 +32,11 @@ export default function GameInfo() {
       } else if (username === "") {
         setOtherThing("needUsername");
       } else {
-        const info: unknown = await invoke("get_latest_info", { logDirPath: logPath, username });
+        const info: unknown = await invoke("get_latest_info", {
+          logDirPath: logPath,
+          username,
+          apiKey: hypApiKey,
+        });
         console.log(JSON.stringify((info as any as info).party_info));
 
         setPartyInfo((info as any as info).party_info);

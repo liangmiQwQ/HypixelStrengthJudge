@@ -4,7 +4,6 @@ use futures::future::join_all;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
-use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -107,7 +106,6 @@ pub async fn get_latest_info(
     api_key: String,
 ) -> Result<ReturnData, ()> {
     let start_time = Instant::now();
-
     let get_useful_lines_start_time = Instant::now();
     let mut return_data = ReturnData {
         player_data: None,
