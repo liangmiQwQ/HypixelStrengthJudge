@@ -1,4 +1,9 @@
-use std::{fmt::format, fs::File, io::Read, path::PathBuf, vec};
+use std::{
+    fs::{self, File},
+    io::Read,
+    path::PathBuf,
+    vec,
+};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -11,7 +16,7 @@ struct CacheFile {
 
 #[derive(Deserialize, Serialize, Clone)]
 struct CachePlayerData {
-    data: PlayerData,
+    data: Option<PlayerData>,
     time: i64,
 }
 
@@ -26,18 +31,20 @@ async fn get_player_data(
     username: String,
     delay: i64,
 ) -> Option<PlayerData> {
-    if let Some(cache_data) = get_cache_file(app_handle)
-        .iter()
-        .find(|&cache_player_data| {
+    let mut cache_file = get_cache_file(app_handle.clone());
+    if let Some(cache_data) = cache_file.iter().find(|&cache_player_data| {
+        if let Some(player_data) = cache_player_data.data.clone() {
             let now = current_timestamp();
-            if now - cache_player_data.time < delay && cache_player_data.data.name == username {
+            if now - cache_player_data.time < delay && player_data.name == username {
                 return true;
             } else {
                 return false;
             }
-        })
-    {
-        return Some(cache_data.data.clone());
+        } else {
+            return false;
+        }
+    }) {
+        return cache_data.data.clone();
     } else {
         // let's get a little more exciting and get the hypixel api
         let mut player_data = PlayerData {
@@ -210,9 +217,19 @@ async fn get_player_data(
                         player_data.rank.name_color = rank_colors.gold.clone()
                     }
                 }
+                cache_file.push(CachePlayerData {
+                    time: current_timestamp(),
+                    data: Some(player_data.clone()),
+                });
             } else {
+                cache_file.push(CachePlayerData {
+                    time: current_timestamp(),
+                    data: None,
+                });
                 return None; // Nick
             }
+
+            save_cache_file(app_handle.clone(), cache_file);
             // player_data
             Some(player_data)
         } else {
@@ -264,4 +281,14 @@ fn get_cache_file(app_handle: tauri::AppHandle) -> Vec<CachePlayerData> {
     } else {
         return vec![];
     };
+}
+
+fn save_cache_file(app_handle: tauri::AppHandle, value: Vec<CachePlayerData>) {
+    if let Some(cache_dir) = app_cache_dir(&app_handle.config()) {
+        let cache_path = cache_dir.join("api_cache.json");
+        let cache_file = CacheFile { data: value };
+        let json_data = serde_json::to_string(&cache_file).unwrap();
+
+        let _ = fs::write(cache_path, json_data);
+    }
 }

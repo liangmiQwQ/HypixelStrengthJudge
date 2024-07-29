@@ -3,8 +3,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::hypixel::Rank;
-
 pub struct RankColors {
     pub gray: String,
     pub red: String,
