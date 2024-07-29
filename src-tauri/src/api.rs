@@ -1,4 +1,4 @@
-use std::{fmt::format, fs::File, io::Read, path::PathBuf};
+use std::{fmt::format, fs::File, io::Read, path::PathBuf, vec};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -17,7 +17,7 @@ struct CachePlayerData {
 
 use crate::{
     hypixel::{PlayerData, Rank},
-    libs::current_timestamp,
+    libs::{current_timestamp, get_rank_color, rgb_to_hex},
 };
 
 async fn get_player_data(
@@ -41,16 +41,17 @@ async fn get_player_data(
     } else {
         // let's get a little more exciting and get the hypixel api
         let mut player_data = PlayerData {
-            name: username,
+            name: username.clone(), // √
             rank: Rank {
                 name: "DEFAULT".to_string(),
-                plus_color: todo!(),
+                plus_color: None,
+                name_color: rgb_to_hex(170, 170, 170),
             },
             bw_fkdr: "0.00".to_string(), // √
             bw_level: 0,                 // √️
             lobby_level: 0,              // √
             bblr: "0.00".to_string(),    // √
-            win_streak: 0,
+            win_streak: 0,               // √
         };
 
         let option_response = match reqwest::get(format!(
@@ -72,7 +73,7 @@ async fn get_player_data(
             }
         };
         if let Some(response) = option_response {
-            let player_data_server = response["player"];
+            let player_data_server = response["player"].clone();
             if !player_data_server.is_null() {
                 // lobby level
                 if let Some(network_exp) = player_data_server
@@ -96,8 +97,8 @@ async fn get_player_data(
                 if let Some(stats) = player_data_server.get("stats") {
                     if let Some(bw) = stats.get("Bedwars") {
                         // bedwars value
-                        let mut fk: u64;
-                        let mut fd: u64;
+                        let mut fk: u64 = 0;
+                        let mut fd: u64 = 0;
                         if let Some(final_kill) =
                             bw.get("final_kills_bedwars").and_then(|fk| fk.as_u64())
                         {
@@ -112,8 +113,8 @@ async fn get_player_data(
                             player_data.bw_fkdr = format!("{:.2}", fk as f64 / fd as f64);
                         }
 
-                        let mut bb: u64; // beds_broken_bedwars
-                        let mut bl: u64; // beds_lost_bedwars
+                        let mut bb: u64 = 0; // beds_broken_bedwars
+                        let mut bl: u64 = 0; // beds_lost_bedwars
                         if let Some(beds_broken_bedwars) =
                             bw.get("beds_broken_bedwars").and_then(|bb| bb.as_u64())
                         {
@@ -133,14 +134,92 @@ async fn get_player_data(
                         }
                     }
                 }
+
+                // rank
+                let rank_colors = get_rank_color();
+                if username == "Technoblade" {
+                    println!("Technoblade never dies");
+                    player_data.rank.name = "PIG++".to_string();
+                    player_data.rank.plus_color = Some(rgb_to_hex(85, 255, 255));
+                    player_data.rank.name_color = rgb_to_hex(255, 85, 255);
+                } else if username == "hypixel" || username == "Rezzus" {
+                    player_data.rank.name = "OWNER".to_string();
+                    player_data.rank.name_color = rgb_to_hex(255, 85, 85)
+                } else {
+                    let mut hypixel_rank: String = "NORMAL".to_string();
+                    if let Some(rank) = player_data_server
+                        .get("rank")
+                        .and_then(|rank| rank.as_str())
+                    {
+                        hypixel_rank = rank.to_string();
+                    } else {
+                        if let Some(monthly_package_rank) = player_data_server
+                            .get("monthlyPackageRank")
+                            .and_then(|rank| rank.as_str())
+                        {
+                            if monthly_package_rank == "SUPERSTAR" {
+                                hypixel_rank = String::from("SUPERSTAR");
+                            } else {
+                                if let Some(new_package_rank) = player_data_server
+                                    .get("newPackageRank")
+                                    .and_then(|rank| rank.as_str())
+                                {
+                                    hypixel_rank = new_package_rank.to_string()
+                                }
+                            }
+                        } else if let Some(new_package_rank) = player_data_server
+                            .get("newPackageRank")
+                            .and_then(|rank| rank.as_str())
+                        {
+                            hypixel_rank = new_package_rank.to_string();
+                        }
+                    }
+                    // plus color
+                    if hypixel_rank == "MVP_PLUS" || hypixel_rank == "SUPERSTAR" {
+                        if let Some(rank_plus_color) = player_data_server
+                            .get("rankPlusColor")
+                            .and_then(|rpc| rpc.as_str())
+                        {
+                            if let Some(&plus_color_hex) = rank_colors
+                                .to_map()
+                                .get(rank_plus_color.to_lowercase().as_str())
+                            {
+                                player_data.rank.plus_color = Some(plus_color_hex.clone())
+                            }
+                        } else {
+                            player_data.rank.plus_color = Some(rank_colors.red.clone())
+                        }
+                    }
+
+                    if hypixel_rank == "VIP" {
+                        player_data.rank.name = "VIP".to_string();
+                        player_data.rank.name_color = rank_colors.green.clone()
+                    } else if hypixel_rank == "VIP_PLUS" {
+                        player_data.rank.plus_color = Some(rank_colors.gold);
+                        player_data.rank.name = "VIP+".to_string();
+                        player_data.rank.name_color = rank_colors.green.clone();
+                    } else if hypixel_rank == "MVP" {
+                        player_data.rank.name = "MVP".to_string();
+                        player_data.rank.name_color = rgb_to_hex(85, 255, 255)
+                    } else if hypixel_rank == "MVP_PLUS" {
+                        player_data.rank.name = "MVP+".to_string();
+                        player_data.rank.name_color = rgb_to_hex(85, 255, 255);
+                        // plus color not needed
+                    } else if hypixel_rank == "SUPERSTAR" {
+                        player_data.rank.name = "MVP++".to_string();
+                        player_data.rank.name_color = rank_colors.gold.clone()
+                    }
+                }
             } else {
                 return None; // Nick
             }
-            player_data
+            // player_data
+            Some(player_data)
         } else {
             return None; // server error
         }
     };
+    None
 }
 
 fn get_hypixel_lobby_level(network_exp: u64) -> u16 {

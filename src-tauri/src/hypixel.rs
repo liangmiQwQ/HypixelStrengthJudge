@@ -39,7 +39,8 @@ pub struct PlayerData {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Rank {
     pub name: String,               // vip vip+ default
-    pub plus_color: Option<String>, // #xxxxx
+    pub name_color: String,         // #xxxxxx
+    pub plus_color: Option<String>, // #xxxxxx
 }
 
 struct LogFilePath {
