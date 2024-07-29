@@ -25,7 +25,7 @@ use crate::{
     libs::{current_timestamp, get_rank_color, rgb_to_hex},
 };
 
-async fn get_player_data(
+pub async fn get_player_data(
     app_handle: tauri::AppHandle,
     api_key: String,
     username: String,

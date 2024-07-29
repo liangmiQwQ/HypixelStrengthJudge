@@ -1,11 +1,14 @@
+use crate::api::get_player_data;
+use crate::libs::current_timestamp;
+use futures::future::join_all;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use crate::libs::current_timestamp;
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
     get_party_join_patterns, get_party_leave_patterns, get_useful_party_lines_patterns,
@@ -15,7 +18,13 @@ use crate::log_regex::{
 #[derive(Serialize, Debug)]
 pub struct PartyInfo {
     user_job: String, // leader other
-    players: Vec<String>,
+    players: Vec<PartyPlayerData>,
+}
+
+#[derive(Serialize, Debug)]
+struct PartyPlayerData {
+    name: String,
+    player_data: Option<PlayerData>,
 }
 
 #[derive(Serialize)]
@@ -25,7 +34,7 @@ pub struct Location {
     game_mode: Option<String>, // "BEDWARS_FOUR_FOUR" etc.
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlayerData {
     pub name: String,
     pub rank: Rank,
@@ -36,7 +45,7 @@ pub struct PlayerData {
     pub win_streak: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Rank {
     pub name: String,               // vip vip+ default
     pub name_color: String,         // #xxxxxx
@@ -91,11 +100,12 @@ lazy_static! {
 }
 
 #[tauri::command]
-pub fn get_latest_info(
+pub async fn get_latest_info(
     log_dir_path: &str,
     username: &str,
     app_handle: tauri::AppHandle,
-) -> ReturnData {
+    api_key: String,
+) -> Result<ReturnData, ()> {
     let start_time = Instant::now();
 
     let get_useful_lines_start_time = Instant::now();
@@ -174,7 +184,16 @@ pub fn get_latest_info(
                 .contains(username.to_uppercase().as_str())
             {
                 return_data.party_info = Some(PartyInfo {
-                    players: vec![String::from(username)],
+                    players: vec![PartyPlayerData {
+                        name: username.to_string(),
+                        player_data: get_player_data(
+                            app_handle.clone(),
+                            api_key.clone(),
+                            username.to_string(),
+                            3 * 60 * 60 * 1000,
+                        )
+                        .await,
+                    }],
                     user_job: String::from("LEADER"),
                 });
             } else {
@@ -182,7 +201,16 @@ pub fn get_latest_info(
                     .unwrap_or_else(|| "some error".to_string());
                 if leader != "some error" {
                     return_data.party_info = Some(PartyInfo {
-                        players: vec![String::from(leader)],
+                        players: vec![PartyPlayerData {
+                            name: leader.clone(),
+                            player_data: get_player_data(
+                                app_handle.clone(),
+                                api_key.clone(),
+                                leader,
+                                3 * 60 * 60 * 1000,
+                            )
+                            .await,
+                        }],
                         user_job: String::from("OTHER"),
                     });
                 }
@@ -192,20 +220,59 @@ pub fn get_latest_info(
             for add_number in 0..6 {
                 let next_line = useful_lines.pl_lines[1 + add_number].clone();
                 if next_line.contains("Party Moderators:") {
-                    let moderators = match extract_party_moderators(next_line.as_str()) {
+                    let moderators: Vec<_> = match extract_party_moderators(next_line.as_str()) {
                         Some(moderators) => moderators,
                         None => vec![],
                     };
+
+                    let moderators_future = moderators
+                        .iter()
+                        .map(|moderator| async {
+                            PartyPlayerData {
+                                player_data: get_player_data(
+                                    app_handle.clone(),
+                                    api_key.clone(),
+                                    moderator.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await,
+                                name: moderator.clone(),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    let results = join_all(moderators_future).await;
+
                     if let Some(party_info) = &mut return_data.party_info {
-                        party_info.players.extend(moderators);
+                        party_info.players.extend(results)
+                        // .extend(results.into_iter().filter_map(Result::ok).collect());
                     }
                 } else if next_line.contains("Party Members:") {
                     let members = match extract_party_members(next_line.as_str()) {
                         Some(members) => members,
                         None => vec![],
                     };
+
+                    let members_future = members
+                        .iter()
+                        .map(|member| async {
+                            return PartyPlayerData {
+                                player_data: get_player_data(
+                                    app_handle.clone(),
+                                    api_key.clone(),
+                                    member.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await,
+                                name: member.clone(),
+                            };
+                        })
+                        .collect::<Vec<_>>();
+
+                    let results = join_all(members_future).await;
                     if let Some(party_info) = &mut return_data.party_info {
-                        party_info.players.extend(members);
+                        party_info.players.extend(results);
+                        // .extend(results.into_iter().filter_map(Result::ok).collect());
                     }
                 }
             }
@@ -231,7 +298,16 @@ pub fn get_latest_info(
                         {
                             is_message_used = true;
                             if let Some(party_info) = &mut return_data.party_info {
-                                party_info.players.push(join_player);
+                                party_info.players.push(PartyPlayerData {
+                                    name: join_player.clone(),
+                                    player_data: get_player_data(
+                                        app_handle.clone(),
+                                        api_key.clone(),
+                                        join_player.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await,
+                                });
                             };
                         }
                     }
@@ -250,7 +326,7 @@ pub fn get_latest_info(
                                 if let Some(party_info) = &mut return_data.party_info {
                                     party_info
                                         .players
-                                        .retain(|player: &String| player != &leave_player);
+                                        .retain(|player| player.name != leave_player.clone());
                                 };
                             }
                         }
@@ -285,7 +361,7 @@ pub fn get_latest_info(
         "[Strength Judge] [info] Getting latest info in {:?}",
         elapsed
     );
-    return_data
+    Ok(return_data)
 }
 
 fn get_latest_log_file(log_dir_path: &str) -> String {
