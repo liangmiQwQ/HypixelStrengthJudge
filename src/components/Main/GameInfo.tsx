@@ -4,7 +4,6 @@ import PlayersInfo from "./PlayersInfo";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useRef, useState } from "react";
 import useConfig from "../../store/config";
-import { appWindow } from "@tauri-apps/api/window";
 
 export default function GameInfo() {
   // invoke("get_latest_info");
@@ -33,8 +32,7 @@ export default function GameInfo() {
 
     const handleTimer = async () => {
       await getLatestInfo();
-      const delay = (await appWindow.isFocused()) ? 2500 : 5000;
-      timer.current = setInterval(getLatestInfo, delay);
+      timer.current = setInterval(getLatestInfo, 2500);
     };
 
     async function getLatestInfo() {
@@ -50,8 +48,6 @@ export default function GameInfo() {
           username,
           apiKey: hypApiKey,
         });
-        console.log(JSON.stringify((info as any as info).party_info));
-
         setPartyInfo((info as any as info).party_info);
       }
     }

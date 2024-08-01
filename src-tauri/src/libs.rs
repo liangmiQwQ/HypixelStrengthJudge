@@ -58,10 +58,10 @@ pub fn rgb_to_hex(r: u8, g: u8, b: u8) -> String {
 pub fn get_rank_color() -> RankColors {
     return RankColors {
         gray: "#aaaaaa".to_string(),
-        aqua: "#00b3b3".to_string(),
+        aqua: "#14EAEA".to_string(),
         red: "#ff0000".to_string(),
         gold: "#ffaa00".to_string(),
-        green: "#00ff00".to_string(),
+        green: "#00E000".to_string(),
         yellow: "#ffff00".to_string(),
         light_purple: "#ff55ff".to_string(),
         white: "#ffffff".to_string(),

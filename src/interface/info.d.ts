@@ -7,7 +7,7 @@ interface info {
 interface PlayerData {
   name: string;
   rank: Rank;
-  bw_fkdr: number;
+  bw_fkdr: string;
   bw_level: number;
   lobby_level: number;
   bblr: string;

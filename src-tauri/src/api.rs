@@ -232,15 +232,17 @@ pub async fn get_player_data(
                 )
                 .await;
             } else {
+                // nick
+                player_data.bw_fkdr = "nick".to_string();
                 add_cache(
                     app_handle.clone(),
                     CachePlayerData {
                         time: current_timestamp(),
-                        data: None,
+                        data: Some(player_data.clone()),
                     },
                 )
                 .await;
-                return None; // Nick
+                return Some(player_data); // Nick
             }
 
             println!("success return: {:?}", player_data.clone());
