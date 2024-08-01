@@ -2,12 +2,14 @@ use std::{
     fs::{self, File},
     io::Read,
     path::PathBuf,
+    sync::Arc,
     vec,
 };
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::api::path::app_cache_dir;
+use tokio::sync::Mutex;
 
 #[derive(Deserialize, Serialize, Clone)]
 struct CacheFile {
@@ -25,13 +27,17 @@ use crate::{
     libs::{current_timestamp, get_rank_color, rgb_to_hex},
 };
 
+lazy_static::lazy_static! {
+    static ref CACHE_FILE_MUTEX: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
+}
+
 pub async fn get_player_data(
     app_handle: tauri::AppHandle,
     api_key: String,
     username: String,
     delay: i64,
 ) -> Option<PlayerData> {
-    let mut cache_file = get_cache_file(app_handle.clone());
+    let cache_file = get_cache_file(app_handle.clone()).await;
     if let Some(cache_data) = cache_file.iter().find(|&cache_player_data| {
         if let Some(player_data) = cache_player_data.data.clone() {
             let now = current_timestamp();
@@ -217,26 +223,33 @@ pub async fn get_player_data(
                         player_data.rank.name_color = rank_colors.gold.clone()
                     }
                 }
-                cache_file.push(CachePlayerData {
-                    time: current_timestamp(),
-                    data: Some(player_data.clone()),
-                });
+                add_cache(
+                    app_handle.clone(),
+                    CachePlayerData {
+                        time: current_timestamp(),
+                        data: Some(player_data.clone()),
+                    },
+                )
+                .await;
             } else {
-                cache_file.push(CachePlayerData {
-                    time: current_timestamp(),
-                    data: None,
-                });
+                add_cache(
+                    app_handle.clone(),
+                    CachePlayerData {
+                        time: current_timestamp(),
+                        data: None,
+                    },
+                )
+                .await;
                 return None; // Nick
             }
 
-            save_cache_file(app_handle.clone(), cache_file);
+            println!("success return: {:?}", player_data.clone());
             // player_data
-            Some(player_data)
+            return Some(player_data);
         } else {
             return None; // server error
         }
     };
-    None
 }
 
 fn get_hypixel_lobby_level(network_exp: u64) -> u16 {
@@ -260,7 +273,15 @@ fn create_cache_file(cache_dir: PathBuf) -> Option<File> {
     }
 }
 
-fn get_cache_file(app_handle: tauri::AppHandle) -> Vec<CachePlayerData> {
+async fn add_cache(app_handle: tauri::AppHandle, value: CachePlayerData) {
+    let mut cache_file = get_cache_file(app_handle.clone()).await;
+    cache_file.push(value);
+    save_cache_file(app_handle, cache_file).await;
+}
+
+async fn get_cache_file(app_handle: tauri::AppHandle) -> Vec<CachePlayerData> {
+    let _lock = CACHE_FILE_MUTEX.lock().await;
+
     if let Some(cache_dir) = app_cache_dir(&app_handle.config()) {
         let mut file_contains = String::new();
         match File::open(cache_dir.join("api_cache.json")) {
@@ -288,12 +309,33 @@ fn get_cache_file(app_handle: tauri::AppHandle) -> Vec<CachePlayerData> {
     };
 }
 
-fn save_cache_file(app_handle: tauri::AppHandle, value: Vec<CachePlayerData>) {
+async fn save_cache_file(app_handle: tauri::AppHandle, value: Vec<CachePlayerData>) {
+    // let _lock = CACHE_FILE_MUTEX.lock().await;
+
+    // if let Some(cache_dir) = app_cache_dir(&app_handle.config()) {
+    //     let cache_path = cache_dir.join("api_cache.json");
+    //     let cache_file = CacheFile { data: value };
+    //     let json_data = serde_json::to_string(&cache_file).unwrap();
+
+    //     let _ = fs::write(cache_path, json_data);
+    // }
     if let Some(cache_dir) = app_cache_dir(&app_handle.config()) {
         let cache_path = cache_dir.join("api_cache.json");
         let cache_file = CacheFile { data: value };
-        let json_data = serde_json::to_string(&cache_file).unwrap();
-
-        let _ = fs::write(cache_path, json_data);
+        match serde_json::to_string(&cache_file) {
+            Ok(json_data) => match fs::write(&cache_path, json_data) {
+                Ok(_) => {
+                    println!("Successfully wrote to cache file");
+                }
+                Err(e) => {
+                    println!("Failed to write to cache file: {}", e);
+                }
+            },
+            Err(e) => {
+                println!("Failed to serialize cache file: {}", e);
+            }
+        }
+    } else {
+        println!("Cache directory not found");
     }
 }

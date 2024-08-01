@@ -16,6 +16,17 @@ export default function GameInfo() {
   const timer = useRef<number | undefined>();
 
   useEffect(() => {
+    fetch(`https://api.hypixel.net/punishmentstats?key=${hypApiKey}`)
+      .then(data => data.json())
+      .then(data => {
+        if (data.cause != undefined) {
+          // have error
+          setOtherThing("badApiKey");
+        }
+      });
+  }, [hypApiKey]);
+
+  useEffect(() => {
     // if (runTimes) return;
     runTimes.current++;
     if (runTimes.current === 1) return;
@@ -27,10 +38,12 @@ export default function GameInfo() {
     };
 
     async function getLatestInfo() {
-      if (logPath === "") {
+      if (logPath === "" && otherThing != "badApiKey") {
         setOtherThing("needLogPath");
-      } else if (username === "") {
+      } else if (username === "" && otherThing != "badApiKey") {
         setOtherThing("needUsername");
+      } else if (hypApiKey === "" && otherThing != "badApiKey") {
+        setOtherThing("needKey");
       } else {
         const info: unknown = await invoke("get_latest_info", {
           logDirPath: logPath,
@@ -52,7 +65,7 @@ export default function GameInfo() {
     return () => {
       clearInterval(timer.current);
     };
-  }, [logPath, username]);
+  }, [logPath, username, hypApiKey]);
 
   return (
     <div className="flex w-full h-full">

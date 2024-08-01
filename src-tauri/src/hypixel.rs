@@ -4,8 +4,9 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::log_regex::{
@@ -90,11 +91,11 @@ lazy_static! {
     static ref PLAYERS_DATA: Mutex<Vec<PlayerData>> = Mutex::new(vec![]);
     static ref USER_ID: Mutex<String> = Mutex::new(String::from(""));
     static ref PARTY_LIST: Mutex<Vec<String>> = Mutex::new(vec![]);
-    static ref LATEST_LOG_FILE_PATH: Mutex<LogFilePath> = Mutex::new(LogFilePath {
+    static ref LATEST_LOG_FILE_PATH: StdMutex<LogFilePath> = StdMutex::new(LogFilePath {
         path: String::from("unknown"),
         timestamp: current_timestamp(),
     });
-    static ref LATEST_LOG_FILE: Mutex<LogFile> = Mutex::new(LogFile {
+    static ref LATEST_LOG_FILE: StdMutex<LogFile> = StdMutex::new(LogFile {
         last_line_number: 0,
         useful_line: UsefulLines {
             pl_lines: vec![],
@@ -210,7 +211,7 @@ pub async fn get_latest_info(
                         )
                         .await;
 
-                        let mut players = arc_players.lock().unwrap();
+                        let mut players = arc_players.lock().await;
                         players.push(PartyPlayerData {
                             name: username,
                             player_data,
@@ -249,7 +250,7 @@ pub async fn get_latest_info(
                             )
                             .await;
 
-                            let mut players = arc_players.lock().unwrap();
+                            let mut players = arc_players.lock().await;
                             players.push(PartyPlayerData {
                                 name: leader_name,
                                 player_data,
@@ -293,7 +294,7 @@ pub async fn get_latest_info(
                                 )
                                 .await;
 
-                                let mut players = arc_players.lock().unwrap();
+                                let mut players = arc_players.lock().await;
                                 players.push(PartyPlayerData {
                                     name: moderator_name,
                                     player_data,
@@ -331,7 +332,7 @@ pub async fn get_latest_info(
                                 )
                                 .await;
 
-                                let mut players = arc_players.lock().unwrap();
+                                let mut players = arc_players.lock().await;
                                 players.push(PartyPlayerData {
                                     name: member_name,
                                     player_data,
@@ -384,7 +385,7 @@ pub async fn get_latest_info(
                                     )
                                     .await;
 
-                                    let mut players = arc_players.lock().unwrap();
+                                    let mut players = arc_players.lock().await;
                                     players.push(PartyPlayerData {
                                         name: join_player_name,
                                         player_data,
@@ -454,7 +455,7 @@ pub async fn get_latest_info(
             }
 
             if let Some(party_info) = &mut return_data.party_info {
-                let players = arc_party_info_players.lock().unwrap();
+                let players = arc_party_info_players.lock().await;
 
                 for player in players.iter() {
                     party_info.players.push(player.clone())

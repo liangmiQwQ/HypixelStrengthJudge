@@ -1,5 +1,5 @@
 import { Heading, Table } from "@radix-ui/themes";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 interface PartyInfoProps {
