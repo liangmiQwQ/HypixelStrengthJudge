@@ -207,10 +207,10 @@ pub async fn get_player_data(
                         player_data.rank.name_color = rank_colors.green.clone();
                     } else if hypixel_rank == "MVP" {
                         player_data.rank.name = "MVP".to_string();
-                        player_data.rank.name_color = rgb_to_hex(85, 255, 255)
+                        player_data.rank.name_color = rank_colors.aqua.clone()
                     } else if hypixel_rank == "MVP_PLUS" {
                         player_data.rank.name = "MVP+".to_string();
-                        player_data.rank.name_color = rgb_to_hex(85, 255, 255);
+                        player_data.rank.name_color = rank_colors.aqua.clone();
                         // plus color not needed
                     } else if hypixel_rank == "SUPERSTAR" {
                         player_data.rank.name = "MVP++".to_string();

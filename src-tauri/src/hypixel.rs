@@ -1,13 +1,12 @@
 use crate::api::get_player_data;
 use crate::libs::current_timestamp;
-use futures::executor::block_on;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use tokio::task::JoinHandle;
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
@@ -27,7 +26,7 @@ struct PartyPlayerData {
     player_data: Option<PlayerData>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Location {
     game_type: String,
     server_type: String, // "LOBBY" or "GAME", if "server" starts with "dynamiclobby", it's "LOBBY"
@@ -67,13 +66,13 @@ struct LatestFile {
     gap: i64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct UsefulLines {
     pl_lines: Vec<String>,
     party_lines: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ReturnData {
     pub player_data: Option<PlayerData>,
     pub location: Location,
@@ -112,7 +111,6 @@ pub async fn get_latest_info(
     api_key: String,
 ) -> Result<ReturnData, ()> {
     let start_time = Instant::now();
-    let get_useful_lines_start_time = Instant::now();
     let mut return_data = ReturnData {
         player_data: None,
         location: Location {
@@ -126,11 +124,6 @@ pub async fn get_latest_info(
     // let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
 
     let useful_lines = get_useful_lines(log_dir_path);
-    let stop_time = get_useful_lines_start_time.elapsed();
-    println!(
-        "[Strength Judge] [info] Getting useful lines in {:?}",
-        stop_time
-    );
 
     // --party list--
     // “[CHAT] Party Members” and the third line after that is Party leader
@@ -166,7 +159,7 @@ pub async fn get_latest_info(
     // [someone has disbanded the party!][someone解散了组队！]
     // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。]
 
-    let is_pl: bool = !useful_lines.pl_lines.is_empty(); // 修改1：简化判断
+    let is_pl: bool = !useful_lines.pl_lines.is_empty();
 
     if is_pl {
         let mut is_in_party = true;
@@ -204,28 +197,28 @@ pub async fn get_latest_info(
 
                 handles.push(PlayerDataHandle {
                     player_name: username.to_string(),
-                    handle: thread::spawn(move || {
+                    handle: tokio::spawn(async move {
                         // let mut players = arc_players.lock().unwrap();
                         let username = username_clone.clone();
 
-                        let player_data_future = async move {
-                            let player_data = get_player_data(
-                                app_handle_clone,
-                                api_key_clone,
-                                username.clone(),
-                                3 * 60 * 60 * 1000,
-                            )
-                            .await;
+                        // let player_data_future = async move {
+                        let player_data = get_player_data(
+                            app_handle_clone,
+                            api_key_clone,
+                            username.clone(),
+                            3 * 60 * 60 * 1000,
+                        )
+                        .await;
 
-                            let mut players = arc_players.lock().unwrap();
-                            players.push(PartyPlayerData {
-                                name: username,
-                                player_data,
-                            });
-                        };
+                        let mut players = arc_players.lock().unwrap();
+                        players.push(PartyPlayerData {
+                            name: username,
+                            player_data,
+                        });
+                        // };
 
                         // do this async function
-                        block_on(player_data_future);
+                        // block_on(player_data_future);
                     }),
                 });
             } else {
@@ -244,27 +237,27 @@ pub async fn get_latest_info(
 
                     handles.push(PlayerDataHandle {
                         player_name: leader.clone(),
-                        handle: thread::spawn(move || {
+                        handle: tokio::spawn(async move {
                             let leader_name = leader_clone.clone();
 
-                            let player_data_future = async move {
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    leader_name.clone(),
-                                    3 * 60 * 60 * 1000,
-                                )
-                                .await;
+                            // let player_data_future = async move {
+                            let player_data = get_player_data(
+                                app_handle_clone,
+                                api_key_clone,
+                                leader_name.clone(),
+                                3 * 60 * 60 * 1000,
+                            )
+                            .await;
 
-                                let mut players = arc_players.lock().unwrap();
-                                players.push(PartyPlayerData {
-                                    name: leader_name,
-                                    player_data,
-                                });
-                            };
+                            let mut players = arc_players.lock().unwrap();
+                            players.push(PartyPlayerData {
+                                name: leader_name,
+                                player_data,
+                            });
+                            // };
 
                             // do this async function
-                            block_on(player_data_future);
+                            // block_on(player_data_future);
                         }),
                     });
                 }
@@ -288,26 +281,26 @@ pub async fn get_latest_info(
 
                         handles.push(PlayerDataHandle {
                             player_name: moderator.clone(),
-                            handle: thread::spawn(move || {
+                            handle: tokio::spawn(async move {
                                 let moderator_name = moderator_clone.clone();
 
-                                let player_data_future = async move {
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        moderator_name.clone(),
-                                        3 * 60 * 60 * 1000,
-                                    )
-                                    .await;
+                                // let player_data_future = async move {
+                                let player_data = get_player_data(
+                                    app_handle_clone,
+                                    api_key_clone,
+                                    moderator_name.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await;
 
-                                    let mut players = arc_players.lock().unwrap();
-                                    players.push(PartyPlayerData {
-                                        name: moderator_name,
-                                        player_data,
-                                    });
-                                };
+                                let mut players = arc_players.lock().unwrap();
+                                players.push(PartyPlayerData {
+                                    name: moderator_name,
+                                    player_data,
+                                });
+                                // };
 
-                                block_on(player_data_future);
+                                // block_on(player_data_future);
                             }),
                         });
                     }
@@ -326,26 +319,26 @@ pub async fn get_latest_info(
 
                         handles.push(PlayerDataHandle {
                             player_name: member.clone(),
-                            handle: thread::spawn(move || {
+                            handle: tokio::spawn(async move {
                                 let member_name = member_clone.clone();
 
-                                let player_data_future = async move {
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        member_name.clone(),
-                                        3 * 60 * 60 * 1000,
-                                    )
-                                    .await;
+                                // let player_data_future = async move {
+                                let player_data = get_player_data(
+                                    app_handle_clone,
+                                    api_key_clone,
+                                    member_name.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await;
 
-                                    let mut players = arc_players.lock().unwrap();
-                                    players.push(PartyPlayerData {
-                                        name: member_name,
-                                        player_data,
-                                    });
-                                };
+                                let mut players = arc_players.lock().unwrap();
+                                players.push(PartyPlayerData {
+                                    name: member_name,
+                                    player_data,
+                                });
+                                // };
 
-                                block_on(player_data_future);
+                                // block_on(player_data_future);
                             }),
                         })
                     }
@@ -379,26 +372,26 @@ pub async fn get_latest_info(
 
                             handles.push(PlayerDataHandle {
                                 player_name: join_player.clone(),
-                                handle: thread::spawn(move || {
+                                handle: tokio::spawn(async move {
                                     let join_player_name = join_player_clone.clone();
 
-                                    let player_data_future = async move {
-                                        let player_data = get_player_data(
-                                            app_handle_clone,
-                                            api_key_clone,
-                                            join_player_name.clone(),
-                                            3 * 60 * 60 * 1000,
-                                        )
-                                        .await;
+                                    // let player_data_future = async move {
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        join_player_name.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await;
 
-                                        let mut players = arc_players.lock().unwrap();
-                                        players.push(PartyPlayerData {
-                                            name: join_player_name,
-                                            player_data,
-                                        });
-                                    };
+                                    let mut players = arc_players.lock().unwrap();
+                                    players.push(PartyPlayerData {
+                                        name: join_player_name,
+                                        player_data,
+                                    });
+                                    // };
 
-                                    block_on(player_data_future);
+                                    // block_on(player_data_future);
                                 }),
                             })
                         }
@@ -450,8 +443,14 @@ pub async fn get_latest_info(
             }
 
             // do all thread
+            let thread_start_time = Instant::now();
             for player_data_handle in handles {
-                player_data_handle.handle.join().unwrap();
+                let result = player_data_handle.handle.await;
+                match result {
+                    Ok(_) => (),
+                    Err(e) => eprintln!("Task failed: {:?}", e),
+                }
+                // player_data_handle.handle.join().unwrap();
             }
 
             if let Some(party_info) = &mut return_data.party_info {
@@ -461,9 +460,14 @@ pub async fn get_latest_info(
                     party_info.players.push(player.clone())
                 }
             }
+            let thread: std::time::Duration = thread_start_time.elapsed();
+            println!(
+                "[Strength Judge] [info] Getting latest info in {:?}",
+                thread
+            );
         }
     };
-    let elapsed = start_time.elapsed();
+    let elapsed: std::time::Duration = start_time.elapsed();
     println!(
         "[Strength Judge] [info] Getting latest info in {:?}",
         elapsed

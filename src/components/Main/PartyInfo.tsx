@@ -48,10 +48,6 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
           <Table.Body>
             {partyInfo?.players.map((item, index) => {
               function PlayerName({ item }: { item: PartyPlayerData }) {
-                useEffect(() => {
-                  if (item.player_data?.rank.name.endsWith("+")) {
-                  }
-                }, [item]);
                 const [beforePlus, plus] = useMemo(() => {
                   if (item.player_data?.rank.name.endsWith("+")) {
                     return [item.player_data?.rank.name.slice(0, -1), "+"];
@@ -60,7 +56,7 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                   }
                 }, [item]);
                 return (
-                  <>
+                  <span className="font-bold">
                     <span style={{ color: item.player_data?.rank.name_color as string }}>
                       {"[" + beforePlus}
                     </span>
@@ -70,7 +66,7 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                     <span style={{ color: item.player_data?.rank.name_color as string }}>
                       {"] " + item.name}
                     </span>
-                  </>
+                  </span>
                 );
               }
 
