@@ -13,6 +13,15 @@ pub fn get_useful_party_lines_patterns() -> Vec<Regex> {
     patterns
 }
 
+pub fn get_useful_player_lines_patterns() -> Vec<Regex> {
+    let mut patterns = Vec::new();
+
+    patterns.extend(get_player_join_patterns());
+    patterns.extend(get_player_leave_patterns());
+
+    patterns
+}
+
 pub fn get_user_leave_patterns() -> Vec<Regex> {
     vec![
         Regex::new(r"\[CHAT\] You have joined (?:\[.*\])?(?:\s)?(.*)'s party!").unwrap(), // English
@@ -32,12 +41,14 @@ pub fn get_user_leave_patterns() -> Vec<Regex> {
         Regex::new(r"\[CHAT\] 因组队中没有成员， 且所有邀请均已过期， 组队已被解散。").unwrap(), // Chinese
     ]
 }
+
 pub fn get_party_join_patterns() -> Vec<Regex> {
     vec![
         Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*) joined the party\.").unwrap(), // English
         Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)加入了组队。").unwrap(),        // Chinese
     ]
 }
+
 pub fn get_party_leave_patterns() -> Vec<Regex> {
     vec![
         Regex::new(r"\[CHAT\] Kicked (?:\[.*\])?(?:\s)?(.*) because they were offline\.").unwrap(), // English
@@ -52,6 +63,20 @@ pub fn get_job_change_patterns() -> Vec<Regex> {
         Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(?:.*)将组队移交给了(?:\[.*\])?(?:\s)?(.*)").unwrap(), // Chinese (no "." or "。")
         Regex::new(r"\[CHAT\] The party was transferred to (?:\[.*\])?(?:\s)?(.*) because (?:\[.*\])?(?:\s)?(?:.*) left").unwrap(),
         Regex::new(r"\[CHAT\] 由于(?:\[.*\])?(?:\s)?(?:.*)离开了组队，组队被移交给了(?:\[.*\])?(?:\s)?(.*)").unwrap()
+    ]
+}
+
+pub fn get_player_join_patterns() -> Vec<Regex> {
+    vec![
+        Regex::new(r"\[CHAT\] (.*)加入了游戏").unwrap(),
+        Regex::new(r"\[CHAT\] (.*) has joined").unwrap(),
+    ]
+}
+
+pub fn get_player_leave_patterns() -> Vec<Regex> {
+    vec![
+        Regex::new(r"\[CHAT\] (.*) has quit").unwrap(),
+        Regex::new(r"\[CHAT\] (.*)离开了游戏").unwrap(),
     ]
 }
 

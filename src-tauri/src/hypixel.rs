@@ -1,6 +1,7 @@
 use crate::api::get_player_data;
 use crate::libs::current_timestamp;
 use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::PathBuf;
@@ -12,7 +13,7 @@ use tokio::task::JoinHandle;
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
     get_party_join_patterns, get_party_leave_patterns, get_useful_party_lines_patterns,
-    get_user_leave_patterns,
+    get_useful_player_lines_patterns, get_user_leave_patterns,
 };
 
 #[derive(Serialize, Debug)]
@@ -71,6 +72,9 @@ struct LatestFile {
 struct UsefulLines {
     pl_lines: Vec<String>,
     party_lines: Vec<String>,
+    location_line: Option<String>,
+    player_lines: Vec<String>, // someone joined the game, some one have left the game
+    who_line: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -99,7 +103,10 @@ lazy_static! {
         last_line_number: 0,
         useful_line: UsefulLines {
             pl_lines: vec![],
+            location_line: None,
             party_lines: vec![],
+            player_lines: vec![],
+            who_line: None
         }
     });
 }
@@ -125,40 +132,6 @@ pub async fn get_latest_info(
     // let location_re = Regex::new(r#"\{"server":"[^"]+","gametype":"[^"]+".*}"#).unwrap();
 
     let useful_lines = get_useful_lines(log_dir_path);
-
-    // --party list--
-    // “[CHAT] Party Members” and the third line after that is Party leader
-    // the fifth line is Party Members/Moderators
-    // --join and left--
-    // [someone joined the party.][someone加入了组队。]
-    // [someone has left the party.][someone离开了组队.]
-    // [You have joined someone's party!][你加入了someone]的组队！]
-    // [You left the party.][你离开了组队。]
-    // --kick--
-    // [someone has been removed from the party.][someone已被移出组队。]
-    // [You have been kicked from the party by someone][你已被someone踢出组队] // no "." or "。"
-    // [Kicked someone because they were offline.][someone已断开连接， 被移出你的组队。]
-    // --transfer--
-    // [The party was transferred to someone by someone][someone将组队移交给了someone]//no "."or"。"
-    // --disband--
-    // [someone has disbanded the party!][someone解散了组队！]
-    // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。// --party list--
-    // “[CHAT] Party Members” and the third line after that is Party leader
-    // the fifth line is Party Members/Moderators
-    // --join and left--
-    // [someone joined the party.][someone加入了组队。]
-    // [someone has left the party.][someone离开了组队.]
-    // [You have joined someone's party!][你加入了someone]的组队！]
-    // [You left the party.][你离开了组队。]
-    // --kick--
-    // [someone has been removed from the party.][someone已被移出组队。]
-    // [You have been kicked from the party by someone][你已被someone踢出组队] // no "." or "。"
-    // [Kicked someone because they were offline.][someone已断开连接， 被移出你的组队。]
-    // --transfer--
-    // [The party was transferred to someone by someone][someone将组队移交给了someone]//no "."or"。"
-    // --disband--
-    // [someone has disbanded the party!][someone解散了组队！]
-    // [The party was disbanded because all invites expired and the party was empty.][因组队中没有成员， 且所有邀请均已过期， 组队已被解散。]
 
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
 
@@ -489,10 +462,17 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
     let file_content = get_latest_log_file(log_dir_path);
     let lines: Vec<String> = file_content.lines().map(|line| line.to_string()).collect();
     let useful_party_lines_patterns = get_useful_party_lines_patterns();
-    // Get file value
-    let patterns = useful_party_lines_patterns.clone();
+    let mut is_pl = false; // if it = 2 -> break
+    let mut is_who = false;
+    let mut is_location = true;
+
+    let location_pattern = Regex::new(r#"\{"server":"[^"]*","gametype":"[^"]*"\}"#).unwrap();
+    // let location_pattern = Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)离开了组队。").unwrap();
+    let party_patterns = useful_party_lines_patterns.clone();
+    let player_patterns = get_useful_player_lines_patterns().clone();
     let reversed_lines: Vec<&String> = lines.iter().rev().collect();
     let mut addon_useful_party_lines: Vec<String> = Vec::new();
+    let mut addon_useful_player_lines: Vec<String> = Vec::new();
     for (index, line) in reversed_lines.iter().enumerate() {
         // two method to break
         // 1. pl, location(todo) and players(todo)'s lens all > 0 or != "" && from new lines
@@ -504,10 +484,15 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
         4 nothing   3             4 something 3                         rev_index = all_line_len - real_index - 1
         5 something 4             5 something 4
         */
-        if lines.len() - latest_log_file.last_line_number - 1 <= index {
+        if lines.len() - latest_log_file.last_line_number - 1 <= index || (is_pl && is_location)
+        // the who line before location line is meaningless
+        // || (is_pl && is_who)
+        // although pl and who are all filled, but location line is also needed
+        {
             break;
         } else {
-            if line.contains("[CHAT] Party Members ") {
+            // PL line
+            if line.contains("[CHAT] Party Members ") && !is_pl {
                 //pl lines
                 let real_index = lines.len() - index - 1;
                 // Ensure we do not exceed the bounds of the lines vector
@@ -523,29 +508,38 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                         break;
                     }
                 }
-                break; // some other things to add
+                is_pl = true
+            } else if !is_who && line.contains("[CHAT] ONLINE: ") {
+                latest_log_file.useful_line.who_line = Some(line.to_string());
+                is_who = true
+                // todo: who line
+                // need only one who line
+            } else if location_pattern.is_match(line) {
+                latest_log_file.useful_line.location_line = Some(line.to_string());
+                is_location = true
+                // todo: location line
+                // if pl line and location line are all found => break
             } else {
-                for pattern in &patterns {
-                    if pattern.is_match(&line) {
-                        // latest_log_file
-                        //     .useful_line
-                        //     .party_lines
-                        //     .push(line.to_string());
-                        // ⬆️ that is error
-                        addon_useful_party_lines.push(line.to_string());
-                        break;
+                if !is_pl {
+                    for pattern in &party_patterns {
+                        if pattern.is_match(&line) {
+                            // latest_log_file
+                            //     .useful_line
+                            //     .party_lines
+                            //     .push(line.to_string());
+                            // ⬆️ that is error
+                            addon_useful_party_lines.push(line.to_string());
+                            break;
+                        }
                     }
-                    // for pattern in &patterns {
-                    //     if pattern.is_match(&line) {
-                    //         // latest_log_file
-                    //         //     .useful_line
-                    //         //     .party_lines
-                    //         //     .push(line.to_string());
-                    //         // ⬆️ that is error
-                    //         addon_useful_party_lines.push(line.to_string());
-                    //         break;
-                    //     }
-                    // }
+                } else if !is_who {
+                    // all message after is_who
+                    for pattern in &player_patterns {
+                        if pattern.is_match(&line) {
+                            addon_useful_player_lines.push(line.to_string());
+                            break;
+                        }
+                    }
                 }
             }
         }
