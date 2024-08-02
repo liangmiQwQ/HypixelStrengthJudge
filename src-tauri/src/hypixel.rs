@@ -545,11 +545,16 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
         }
     }
     addon_useful_party_lines.reverse();
+    addon_useful_player_lines.reverse();
     latest_log_file.last_line_number = lines.len() - 1;
     latest_log_file
         .useful_line
         .party_lines
         .extend(addon_useful_party_lines);
+    latest_log_file
+        .useful_line
+        .player_lines
+        .extend(addon_useful_player_lines);
 
     return latest_log_file.useful_line.clone();
 }
