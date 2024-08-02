@@ -28,7 +28,7 @@ struct PartyPlayerData {
     player_data: Option<PlayerData>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Location {
     game_type: String,
     server_type: String, // "LOBBY" or "GAME", if "server" starts with "dynamiclobby", it's "LOBBY"
@@ -80,8 +80,14 @@ struct UsefulLines {
 #[derive(Serialize, Debug)]
 pub struct ReturnData {
     pub player_data: Option<PlayerData>,
-    pub location: Location,
+    pub personal_data: PersonalData,
     pub party_info: Option<PartyInfo>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct PersonalData {
+    pub location: Location,
+    pub data: Option<PlayerData>,
 }
 
 struct PlayerDataHandle {
@@ -121,11 +127,15 @@ pub async fn get_latest_info(
     let start_time = Instant::now();
     let mut return_data = ReturnData {
         player_data: None,
-        location: Location {
-            game_type: String::from("UNKNOWN"),
-            server_type: String::from("UNKNOWN"),
-            game_mode: None,
+        personal_data: PersonalData {
+            location: Location {
+                game_type: String::from("UNKNOWN"),
+                server_type: String::from("UNKNOWN"),
+                game_mode: None,
+            },
+            data: None,
         },
+
         party_info: None,
     };
 
@@ -133,7 +143,15 @@ pub async fn get_latest_info(
 
     let useful_lines = get_useful_lines(log_dir_path);
 
+    let mut handles: Vec<PlayerDataHandle> = vec![];
+    let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
+    // tokio::spawn✌️
+
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
+    let is_who: bool = match useful_lines.who_line {
+        Some(_) => true,
+        None => false,
+    };
 
     if is_pl {
         let mut is_in_party = true;
@@ -147,13 +165,6 @@ pub async fn get_latest_info(
         }
 
         if is_in_party {
-            let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> =
-                Arc::new(Mutex::new(Vec::new()));
-
-            let mut handles: Vec<PlayerDataHandle> = vec![];
-            // something todo
-            // user used pl command
-            // +2 and it's party leader
             let leader_line = useful_lines.pl_lines[2].clone();
             if leader_line
                 .to_uppercase()
@@ -415,32 +426,28 @@ pub async fn get_latest_info(
                     }
                 }
             }
-
-            // do all thread
-            let thread_start_time = Instant::now();
-            for player_data_handle in handles {
-                let result = player_data_handle.handle.await;
-                match result {
-                    Ok(_) => (),
-                    Err(e) => eprintln!("Task failed: {:?}", e),
-                }
-                // player_data_handle.handle.join().unwrap();
-            }
-
-            if let Some(party_info) = &mut return_data.party_info {
-                let players = arc_party_info_players.lock().await;
-
-                for player in players.iter() {
-                    party_info.players.push(player.clone())
-                }
-            }
-            let thread: std::time::Duration = thread_start_time.elapsed();
-            println!(
-                "[Strength Judge] [info] Getting latest info in {:?}",
-                thread
-            );
         }
     };
+    if is_who {}
+
+    // do all thread
+    for player_data_handle in handles {
+        let result = player_data_handle.handle.await;
+        match result {
+            Ok(_) => (),
+            Err(e) => eprintln!("Task failed: {:?}", e),
+        }
+        // player_data_handle.handle.join().unwrap();
+    }
+
+    if let Some(party_info) = &mut return_data.party_info {
+        let players: tokio::sync::MutexGuard<Vec<PartyPlayerData>> =
+            arc_party_info_players.lock().await;
+
+        for player in players.iter() {
+            party_info.players.push(player.clone())
+        }
+    }
     let elapsed: std::time::Duration = start_time.elapsed();
     println!(
         "[Strength Judge] [info] Getting latest info in {:?}",
