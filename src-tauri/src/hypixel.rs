@@ -5,6 +5,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::PathBuf;
+use std::result;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
@@ -79,7 +80,10 @@ struct UsefulLines {
 
 #[derive(Serialize, Debug)]
 pub struct ReturnData {
-    pub player_data: Option<PlayerData>,
+    pub player_data: Option<Vec<Option<PlayerData>>>,
+    // Option nesting
+    // outside option: maybe the player isn't in any games
+    // inside option: maybe some players using Nick
     pub personal_data: PersonalData,
     pub party_info: Option<PartyInfo>,
 }
@@ -145,12 +149,14 @@ pub async fn get_latest_info(
 
     let mut handles: Vec<PlayerDataHandle> = vec![];
     let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
+    let arc_players: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::new(Mutex::new(Vec::new()));
+
     // tokio::spawn✌️
 
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
-    let is_who: bool = match useful_lines.who_line {
-        Some(_) => true,
-        None => false,
+    let who_line: String = match useful_lines.who_line {
+        Some(wl) => wl,
+        None => "".to_string(),
     };
 
     if is_pl {
@@ -191,7 +197,7 @@ pub async fn get_latest_info(
                             app_handle_clone,
                             api_key_clone,
                             username.clone(),
-                            3 * 60 * 60 * 1000,
+                            5 * 60 * 60 * 1000,
                         )
                         .await;
 
@@ -428,7 +434,58 @@ pub async fn get_latest_info(
             }
         }
     };
-    if is_who {}
+    if who_line != "" {
+        if let Some(pos) = who_line.find("[CHAT] ONLINE:") {
+            let players: Vec<&str> = who_line[pos + "[CHAT] ONLINE:".len()..]
+                .trim()
+                .split(" ")
+                .collect();
+
+            let party_players: Vec<String> = handles
+                .iter()
+                .map(|handle| handle.player_name.clone())
+                .collect();
+            for player in players {
+                // each player
+                // exclude party players
+                let mut is_party_player = false;
+                for party_player_name in &party_players {
+                    if party_player_name == player {
+                        is_party_player = true;
+                        break;
+                    }
+                }
+
+                if !is_party_player {
+                    // thread start!
+                    let player_name_clone = player.to_string();
+                    let api_key_clone = api_key.clone();
+                    let app_handle_clone = app_handle.clone();
+                    let players_arc: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::clone(&arc_players);
+
+                    handles.push(PlayerDataHandle {
+                        player_name: player.to_string(),
+                        handle: tokio::spawn(async move {
+                            let username = player_name_clone.clone();
+
+                            let player_data = get_player_data(
+                                app_handle_clone,
+                                api_key_clone,
+                                username.clone(),
+                                24 * 60 * 60 * 1000,
+                            )
+                            .await;
+
+                            let mut players = players_arc.lock().await;
+                            players.push(player_data)
+                        }),
+                    })
+                }
+            }
+            // just basic
+            // (someone joined someone left todo)
+        }
+    }
 
     // do all thread
     for player_data_handle in handles {
@@ -446,6 +503,14 @@ pub async fn get_latest_info(
 
         for player in players.iter() {
             party_info.players.push(player.clone())
+        }
+    }
+
+    if let Some(player_data) = &mut return_data.player_data {
+        let players: tokio::sync::MutexGuard<Vec<Option<PlayerData>>> = arc_players.lock().await;
+
+        for player in players.iter() {
+            player_data.push(player.clone())
         }
     }
     let elapsed: std::time::Duration = start_time.elapsed();
