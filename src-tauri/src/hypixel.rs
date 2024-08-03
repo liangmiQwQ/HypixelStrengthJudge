@@ -5,10 +5,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::PathBuf;
-use std::result;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use tauri::utils::pattern;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -33,9 +31,19 @@ struct PartyPlayerData {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Location {
-    game_type: String,
+    game_type: String,         // "BEDWARS"
     server_type: String, // "LOBBY" or "GAME", if "server" starts with "dynamiclobby", it's "LOBBY"
     game_mode: Option<String>, // "BEDWARS_FOUR_FOUR" etc.
+    map: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RawLocation {
+    server: String,
+    gametype: String,
+    mode: Option<String>,
+    map: Option<String>,
+    lobbyname: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -139,6 +147,7 @@ pub async fn get_latest_info(
                 game_type: String::from("UNKNOWN"),
                 server_type: String::from("UNKNOWN"),
                 game_mode: None,
+                map: None,
             },
             data: None,
         },
@@ -153,12 +162,17 @@ pub async fn get_latest_info(
     let mut handles: Vec<PlayerDataHandle> = vec![];
     let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
     let arc_players: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::new(Mutex::new(Vec::new()));
+    let arc_personal_data: Arc<Mutex<Option<PlayerData>>> = Arc::new(Mutex::new(None));
 
     // tokio::spawn✌️
 
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
     let who_line: String = match useful_lines.who_line {
         Some(wl) => wl,
+        None => "".to_string(),
+    };
+    let location_line: String = match useful_lines.location_line {
+        Some(ll) => ll,
         None => "".to_string(),
     };
 
@@ -566,6 +580,37 @@ pub async fn get_latest_info(
             }
         }
     }
+    if location_line != "" {
+        if let Some(pos) = Regex::new(r#"\{"server""#)
+            .unwrap()
+            .find(location_line.as_str())
+        {
+            let start = pos.start();
+            let location_str = &location_line[start..];
+
+            if let Some(raw_location) = match serde_json::from_str::<RawLocation>(location_str) {
+                Ok(rl) => Some(rl),
+                Err(_) => None,
+            } {
+                // gametype
+                return_data.personal_data.location.game_type = raw_location.gametype;
+                // server_type
+                if raw_location.server.starts_with("dynamiclobby") {
+                    // in the lobby
+                    return_data.personal_data.location.server_type = "LOBBY".to_string();
+                } else {
+                    return_data.personal_data.location.server_type = "GAME".to_string();
+                }
+                // game mode
+                if let Some(game_mode) = raw_location.mode {
+                    return_data.personal_data.location.game_mode = Some(game_mode);
+                }
+                if let Some(map) = raw_location.map {
+                    return_data.personal_data.location.map = Some(map);
+                }
+            } // else don't do anything, frontend return needJoinServer
+        }
+    }
 
     // do all thread
     for player_data_handle in handles {
@@ -585,6 +630,11 @@ pub async fn get_latest_info(
             party_info.players.push(player.clone())
         }
     }
+
+    let personal_data = &mut return_data.personal_data;
+    let option_personal_data: tokio::sync::MutexGuard<Option<PlayerData>> =
+        arc_personal_data.lock().await;
+    personal_data.data = option_personal_data.clone();
 
     if let Some(player_data) = &mut return_data.player_data {
         let players: tokio::sync::MutexGuard<Vec<Option<PlayerData>>> = arc_players.lock().await;
