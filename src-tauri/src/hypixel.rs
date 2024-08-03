@@ -8,13 +8,15 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use tauri::utils::pattern;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
-    get_party_join_patterns, get_party_leave_patterns, get_useful_party_lines_patterns,
-    get_useful_player_lines_patterns, get_user_leave_patterns,
+    get_party_join_patterns, get_party_leave_patterns, get_player_join_patterns,
+    get_player_leave_patterns, get_useful_party_lines_patterns, get_useful_player_lines_patterns,
+    get_user_leave_patterns,
 };
 
 #[derive(Serialize, Debug)]
@@ -97,6 +99,7 @@ pub struct PersonalData {
 struct PlayerDataHandle {
     handle: JoinHandle<()>,
     player_name: String,
+    data_type: String,
 }
 
 lazy_static! {
@@ -188,6 +191,7 @@ pub async fn get_latest_info(
 
                 handles.push(PlayerDataHandle {
                     player_name: username.to_string(),
+                    data_type: "PARTY".to_string(),
                     handle: tokio::spawn(async move {
                         // let mut players = arc_players.lock().unwrap();
                         let username = username_clone.clone();
@@ -228,6 +232,7 @@ pub async fn get_latest_info(
 
                     handles.push(PlayerDataHandle {
                         player_name: leader.clone(),
+                        data_type: "PARTY".to_string(),
                         handle: tokio::spawn(async move {
                             let leader_name = leader_clone.clone();
 
@@ -272,6 +277,7 @@ pub async fn get_latest_info(
 
                         handles.push(PlayerDataHandle {
                             player_name: moderator.clone(),
+                            data_type: "PARTY".to_string(),
                             handle: tokio::spawn(async move {
                                 let moderator_name = moderator_clone.clone();
 
@@ -310,6 +316,7 @@ pub async fn get_latest_info(
 
                         handles.push(PlayerDataHandle {
                             player_name: member.clone(),
+                            data_type: "PARTY".to_string(),
                             handle: tokio::spawn(async move {
                                 let member_name = member_clone.clone();
 
@@ -363,6 +370,7 @@ pub async fn get_latest_info(
 
                             handles.push(PlayerDataHandle {
                                 player_name: join_player.clone(),
+                                data_type: "PARTY".to_string(),
                                 handle: tokio::spawn(async move {
                                     let join_player_name = join_player_clone.clone();
 
@@ -403,7 +411,13 @@ pub async fn get_latest_info(
                                 // handles.iter().handles.retain(|handle: &PlayerDataHandle| {
                                 //     handle.player_name != leave_player
                                 // });
-                                handles.retain(|handle| handle.player_name != leave_player)
+                                handles.retain(|handle| {
+                                    if handle.data_type == "PARTY" {
+                                        handle.player_name != leave_player
+                                    } else {
+                                        true
+                                    }
+                                })
 
                                 // leave_player_name.push(leave_player)
                             }
@@ -465,6 +479,7 @@ pub async fn get_latest_info(
 
                     handles.push(PlayerDataHandle {
                         player_name: player.to_string(),
+                        data_type: "GAME".to_string(),
                         handle: tokio::spawn(async move {
                             let username = player_name_clone.clone();
 
@@ -482,8 +497,73 @@ pub async fn get_latest_info(
                     })
                 }
             }
-            // just basic
+
+            let player_join_patterns = get_player_join_patterns();
+            let player_leave_patterns = get_player_leave_patterns();
             // (someone joined someone left todo)
+            for message in useful_lines.player_lines.iter() {
+                let mut is_message_used = false;
+
+                // join
+                for pattern in player_join_patterns.clone() {
+                    if pattern.is_match(message) {
+                        if let Some(join_player) = pattern
+                            .captures(message)
+                            .and_then(|caps| caps.get(1))
+                            .map(|match_| match_.as_str().to_string())
+                        {
+                            is_message_used = true;
+
+                            let player_name_clone = join_player.to_string();
+                            let api_key_clone = api_key.clone();
+                            let app_handle_clone = app_handle.clone();
+                            let players_arc: Arc<Mutex<Vec<Option<PlayerData>>>> =
+                                Arc::clone(&arc_players);
+
+                            handles.push(PlayerDataHandle {
+                                player_name: join_player.clone(),
+                                handle: tokio::spawn(async move {
+                                    let join_player_name = player_name_clone.clone();
+
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        join_player_name.clone(),
+                                        24 * 30 * 60 * 1000,
+                                    )
+                                    .await;
+
+                                    let mut players = players_arc.lock().await;
+
+                                    players.push(player_data)
+                                }),
+                                data_type: "GAME".to_string(),
+                            })
+                        }
+                    }
+                }
+
+                if !is_message_used {
+                    // some player leave
+                    for pattern in player_leave_patterns.clone() {
+                        if pattern.is_match(message) {
+                            if let Some(left_player) = pattern
+                                .captures(message)
+                                .and_then(|caps| caps.get(1))
+                                .map(|match_| match_.as_str().to_string())
+                            {
+                                handles.retain(|handle| {
+                                    if handle.data_type == "GAME" {
+                                        handle.player_name != left_player
+                                    } else {
+                                        true
+                                    }
+                                })
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
