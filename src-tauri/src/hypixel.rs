@@ -612,6 +612,31 @@ pub async fn get_latest_info(
         }
     }
 
+    // get personal data
+    let app_handle_clone = app_handle.clone();
+    let api_key_clone = api_key.clone();
+    let username_clone = username.to_string();
+    let arc_user_data = Arc::clone(&arc_personal_data);
+    handles.push(PlayerDataHandle {
+        player_name: username.to_string(),
+        data_type: "PERSONAL".to_string(),
+        handle: tokio::spawn(async move {
+            let username = username_clone.clone();
+
+            let player_data = get_player_data(
+                app_handle_clone,
+                api_key_clone,
+                username,
+                2 * 60 * 60 * 1000,
+            )
+            .await;
+
+            let mut personal_data = arc_user_data.lock().await;
+
+            *personal_data = player_data;
+        }),
+    });
+
     // do all thread
     for player_data_handle in handles {
         let result = player_data_handle.handle.await;
