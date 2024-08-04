@@ -91,7 +91,7 @@ struct UsefulLines {
 
 #[derive(Serialize, Debug)]
 pub struct ReturnData {
-    pub player_data: Option<Vec<Option<PlayerData>>>,
+    pub player_data: Vec<Option<PlayerData>>,
     // Option nesting
     // outside option: maybe the player isn't in any games
     // inside option: maybe some players using Nick
@@ -142,7 +142,7 @@ pub async fn get_latest_info(
 ) -> Result<ReturnData, ()> {
     let start_time = Instant::now();
     let mut return_data = ReturnData {
-        player_data: None,
+        player_data: Vec::new(),
         personal_data: PersonalData {
             location: Location {
                 game_type: String::from("UNKNOWN"),
@@ -647,13 +647,15 @@ pub async fn get_latest_info(
         arc_personal_data.lock().await;
     personal_data.data = option_personal_data.clone();
 
-    if let Some(player_data) = &mut return_data.player_data {
-        let players: tokio::sync::MutexGuard<Vec<Option<PlayerData>>> = arc_players.lock().await;
+    let players: tokio::sync::MutexGuard<Vec<Option<PlayerData>>> = arc_players.lock().await;
 
-        for player in players.iter() {
-            player_data.push(player.clone());
-        }
+    println!("Player List Start!");
+    for player in players.iter() {
+        println!("{:?}", player);
+        return_data.player_data.push(player.clone());
     }
+    println!("Player List End!");
+
     let elapsed: std::time::Duration = start_time.elapsed();
     println!(
         "[Strength Judge] [info] Getting latest info in {:?}",
