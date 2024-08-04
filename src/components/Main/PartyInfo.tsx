@@ -18,7 +18,7 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
     } else {
       return "needPLCommand";
     }
-  }, [partyInfo]);
+  }, [partyInfo, otherThing]);
   return (
     <div
       className={

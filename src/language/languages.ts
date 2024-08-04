@@ -19,6 +19,7 @@ const en = {
     info_needUsername: "Please set your Minecraft ID in the settings",
     info_needKey: "Please set your personal Hypixel API key in the settings",
     info_badApiKey: "Invalid Hypixel API key",
+    info_needJoinServer: "Please join Hypixel first",
     bw_level: "BW Level",
   },
 };
@@ -39,6 +40,7 @@ const zh = {
     info_needUsername: "请在设置中填写自己的游戏ID",
     info_needKey: "请在设置中填写您的Hypixel API key",
     info_badApiKey: "无效的 Hypixel API key",
+    info_needJoinServer: "请先加入Hypixel服务器",
     bw_level: "BW等级",
   },
 };

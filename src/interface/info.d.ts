@@ -1,7 +1,12 @@
 interface info {
-  player_data: null | PlayerData;
-  location: Location;
+  player_data: null | (null | PlayerData)[];
+  personal_data: PersonalData;
   party_info: null | PartyInfo;
+}
+
+interface PersonalData {
+  location: Location;
+  data: null | PlayerData;
 }
 
 interface PlayerData {
@@ -27,8 +32,9 @@ interface Rank {
 
 interface Location {
   game_type: string;
-  server_type: "LOBBY" | "GAME"; // "LOBBY" or "GAME", if "server" starts with "dynamiclobby", it's "LOBBY"
+  server_type: "LOBBY" | "GAME" | "UNKNOWN"; // "LOBBY" or "GAME", if "server" starts with "dynamiclobby", it's "LOBBY"
   game_mode: string | null; // "BEDWARS_FOUR_FOUR" etc.
+  map: string | null;
 }
 
 interface PartyInfo {

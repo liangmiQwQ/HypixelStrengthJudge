@@ -19,6 +19,7 @@ struct CacheFile {
 #[derive(Deserialize, Serialize, Clone)]
 struct CachePlayerData {
     data: Option<PlayerData>,
+    player_name: String,
     time: i64,
 }
 
@@ -39,9 +40,9 @@ pub async fn get_player_data(
 ) -> Option<PlayerData> {
     let cache_file = get_cache_file(app_handle.clone()).await;
     if let Some(cache_data) = cache_file.iter().find(|&cache_player_data| {
-        if let Some(player_data) = cache_player_data.data.clone() {
+        if cache_player_data.player_name == username {
             let now = current_timestamp();
-            if now - cache_player_data.time < delay && player_data.name == username {
+            if now - cache_player_data.time < delay {
                 return true;
             } else {
                 return false;
@@ -226,6 +227,7 @@ pub async fn get_player_data(
                 add_cache(
                     app_handle.clone(),
                     CachePlayerData {
+                        player_name: username,
                         time: current_timestamp(),
                         data: Some(player_data.clone()),
                     },
@@ -237,6 +239,7 @@ pub async fn get_player_data(
                 add_cache(
                     app_handle.clone(),
                     CachePlayerData {
+                        player_name: username,
                         time: current_timestamp(),
                         data: Some(player_data.clone()),
                     },
@@ -245,7 +248,6 @@ pub async fn get_player_data(
                 return Some(player_data); // Nick
             }
 
-            println!("success return: {:?}", player_data.clone());
             // player_data
             return Some(player_data);
         } else {

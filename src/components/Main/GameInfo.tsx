@@ -8,6 +8,7 @@ import useConfig from "../../store/config";
 export default function GameInfo() {
   // invoke("get_latest_info");
   const [partyInfo, setPartyInfo] = useState<PartyInfo | null>(null);
+  const [playerInfo, setPlayerInfo] = useState<(PlayerData | null)[] | null>(null);
   const { logPath, username, hypApiKey } = useConfig();
   const [otherThing, setOtherThing] = useState("");
 
@@ -18,10 +19,13 @@ export default function GameInfo() {
     fetch(`https://api.hypixel.net/punishmentstats?key=${hypApiKey}`)
       .then(data => data.json())
       .then(data => {
-        if (data.cause != undefined) {
+        if (!data.success) {
           // have error
           setOtherThing("badApiKey");
         }
+      })
+      .catch(_e => {
+        setOtherThing("badApiKey");
       });
   }, [hypApiKey]);
 
@@ -43,12 +47,22 @@ export default function GameInfo() {
       } else if (hypApiKey === "" && otherThing != "badApiKey") {
         setOtherThing("needKey");
       } else {
-        const info: unknown = await invoke("get_latest_info", {
+        const info: any = await invoke("get_latest_info", {
           logDirPath: logPath,
           username,
           apiKey: hypApiKey,
         });
-        setPartyInfo((info as any as info).party_info);
+        console.log(JSON.stringify(info));
+
+        if (
+          (info as info).personal_data.location.server_type === "UNKNOWN" &&
+          otherThing != "badApiKey"
+        ) {
+          setOtherThing("needJoinServer");
+        } else {
+          setPlayerInfo((info as info).player_data);
+          setPartyInfo((info as info).party_info);
+        }
       }
     }
 
@@ -67,7 +81,7 @@ export default function GameInfo() {
     <div className="flex w-full h-full">
       <div className="w-7/12 flex justify-center h-full sm:p-2 sm:pl-3 sm:pr-[6px] md:p-3 md:pl-5 md:pr-[10px] lg:p-7 lg:pl-10 lg:pr-5">
         {/* LEFT */}
-        <PlayersInfo />
+        <PlayersInfo playersInfo={playerInfo} otherThing={otherThing} />
       </div>
       <div className="w-5/12 flex flex-col items-center h-full sm:p-2 sm:pr-3 sm:pl-[6px] md:p-3 md:pr-5 md:pl-[10px] lg:p-7 lg:pr-10 lg:pl-5">
         {/* RIGHT */}

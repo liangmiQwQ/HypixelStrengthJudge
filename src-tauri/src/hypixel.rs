@@ -104,6 +104,12 @@ pub struct PersonalData {
     pub data: Option<PlayerData>,
 }
 
+#[derive(Clone, Debug)]
+struct BannedPlayer {
+    reason: String,
+    name: String,
+}
+
 struct PlayerDataHandle {
     handle: JoinHandle<()>,
     player_name: String,
@@ -163,7 +169,7 @@ pub async fn get_latest_info(
     let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
     let arc_players: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::new(Mutex::new(Vec::new()));
     let arc_personal_data: Arc<Mutex<Option<PlayerData>>> = Arc::new(Mutex::new(None));
-
+    let arc_black_list: Arc<Mutex<Vec<BannedPlayer>>> = Arc::new(Mutex::new(vec![]));
     // tokio::spawn✌️
 
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
@@ -200,34 +206,45 @@ pub async fn get_latest_info(
                 let username_clone = username.to_string();
                 let api_key_clone = api_key.clone();
                 let app_handle_clone = app_handle.clone();
-                let arc_players: Arc<Mutex<Vec<PartyPlayerData>>> =
-                    Arc::clone(&arc_party_info_players);
+                let arc_players = Arc::clone(&arc_party_info_players);
+                let arc_banned = Arc::clone(&arc_black_list);
 
                 handles.push(PlayerDataHandle {
                     player_name: username.to_string(),
                     data_type: "PARTY".to_string(),
                     handle: tokio::spawn(async move {
+                        println!("++++++++++++++发现真寻（组队）++++++++++++++");
                         // let mut players = arc_players.lock().unwrap();
                         let username = username_clone.clone();
+                        let mut is_banned = false;
+                        {
+                            let banned_players = arc_banned.lock().await;
 
-                        // let player_data_future = async move {
-                        let player_data = get_player_data(
-                            app_handle_clone,
-                            api_key_clone,
-                            username.clone(),
-                            5 * 60 * 60 * 1000,
-                        )
-                        .await;
+                            for banned_player in banned_players.clone() {
+                                println!("{:?}", banned_player);
+                                if username == banned_player.name
+                                    && banned_player.reason == "PLAYER"
+                                {
+                                    is_banned = true;
+                                };
+                            }
+                        }
 
-                        let mut players = arc_players.lock().await;
-                        players.push(PartyPlayerData {
-                            name: username,
-                            player_data,
-                        });
-                        // };
+                        if !is_banned {
+                            let player_data = get_player_data(
+                                app_handle_clone,
+                                api_key_clone,
+                                username.clone(),
+                                5 * 60 * 60 * 1000,
+                            )
+                            .await;
 
-                        // do this async function
-                        // block_on(player_data_future);
+                            let mut players = arc_players.lock().await;
+                            players.push(PartyPlayerData {
+                                name: username,
+                                player_data,
+                            });
+                        }
                     }),
                 });
             } else {
@@ -241,33 +258,42 @@ pub async fn get_latest_info(
                     let api_key_clone = api_key.clone();
                     let app_handle_clone = app_handle.clone();
                     let leader_clone = leader.clone();
-                    let arc_players: Arc<Mutex<Vec<PartyPlayerData>>> =
-                        Arc::clone(&arc_party_info_players);
+                    let arc_players = Arc::clone(&arc_party_info_players);
+                    let arc_banned = Arc::clone(&arc_black_list);
 
                     handles.push(PlayerDataHandle {
                         player_name: leader.clone(),
                         data_type: "PARTY".to_string(),
                         handle: tokio::spawn(async move {
                             let leader_name = leader_clone.clone();
+                            let mut is_banned = false;
+                            {
+                                let banned_players = arc_banned.lock().await;
 
-                            // let player_data_future = async move {
-                            let player_data = get_player_data(
-                                app_handle_clone,
-                                api_key_clone,
-                                leader_name.clone(),
-                                3 * 60 * 60 * 1000,
-                            )
-                            .await;
+                                for banned_player in banned_players.clone() {
+                                    if leader_name == banned_player.name
+                                        && banned_player.reason == "PARTY"
+                                    {
+                                        is_banned = true
+                                    };
+                                }
+                            }
 
-                            let mut players = arc_players.lock().await;
-                            players.push(PartyPlayerData {
-                                name: leader_name,
-                                player_data,
-                            });
-                            // };
+                            if !is_banned {
+                                let player_data = get_player_data(
+                                    app_handle_clone,
+                                    api_key_clone,
+                                    leader_name.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await;
 
-                            // do this async function
-                            // block_on(player_data_future);
+                                let mut players = arc_players.lock().await;
+                                players.push(PartyPlayerData {
+                                    name: leader_name,
+                                    player_data,
+                                });
+                            };
                         }),
                     });
                 }
@@ -286,32 +312,42 @@ pub async fn get_latest_info(
                         let app_handle_clone = app_handle.clone();
                         let api_key_clone = api_key.clone();
                         let moderator_clone = moderator.clone();
-                        let arc_players: Arc<Mutex<Vec<PartyPlayerData>>> =
-                            Arc::clone(&arc_party_info_players);
+                        let arc_players = Arc::clone(&arc_party_info_players);
+                        let arc_banned = Arc::clone(&arc_black_list);
 
                         handles.push(PlayerDataHandle {
                             player_name: moderator.clone(),
                             data_type: "PARTY".to_string(),
                             handle: tokio::spawn(async move {
                                 let moderator_name = moderator_clone.clone();
+                                let mut is_banned = false;
+                                {
+                                    let banned_players = arc_banned.lock().await;
 
-                                // let player_data_future = async move {
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    moderator_name.clone(),
-                                    3 * 60 * 60 * 1000,
-                                )
-                                .await;
+                                    for banned_player in banned_players.clone() {
+                                        if moderator_name == banned_player.name
+                                            && banned_player.reason == "PARTY"
+                                        {
+                                            is_banned = true
+                                        };
+                                    }
+                                }
 
-                                let mut players = arc_players.lock().await;
-                                players.push(PartyPlayerData {
-                                    name: moderator_name,
-                                    player_data,
-                                });
-                                // };
+                                if !is_banned {
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        moderator_name.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await;
 
-                                // block_on(player_data_future);
+                                    let mut players = arc_players.lock().await;
+                                    players.push(PartyPlayerData {
+                                        name: moderator_name,
+                                        player_data,
+                                    });
+                                };
                             }),
                         });
                     }
@@ -325,8 +361,8 @@ pub async fn get_latest_info(
                         let app_handle_clone = app_handle.clone();
                         let api_key_clone = api_key.clone();
                         let member_clone = member.clone();
-                        let arc_players: Arc<Mutex<Vec<PartyPlayerData>>> =
-                            Arc::clone(&arc_party_info_players);
+                        let arc_players = Arc::clone(&arc_party_info_players);
+                        let arc_banned = Arc::clone(&arc_black_list);
 
                         handles.push(PlayerDataHandle {
                             player_name: member.clone(),
@@ -334,23 +370,34 @@ pub async fn get_latest_info(
                             handle: tokio::spawn(async move {
                                 let member_name = member_clone.clone();
 
-                                // let player_data_future = async move {
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    member_name.clone(),
-                                    3 * 60 * 60 * 1000,
-                                )
-                                .await;
+                                let mut is_banned = false;
+                                {
+                                    let banned_players = arc_banned.lock().await;
 
-                                let mut players = arc_players.lock().await;
-                                players.push(PartyPlayerData {
-                                    name: member_name,
-                                    player_data,
-                                });
-                                // };
+                                    for banned_player in banned_players.clone() {
+                                        if member_name == banned_player.name
+                                            && banned_player.reason == "PARTY"
+                                        {
+                                            is_banned = true
+                                        };
+                                    }
+                                }
 
-                                // block_on(player_data_future);
+                                if !is_banned {
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        member_name.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await;
+
+                                    let mut players = arc_players.lock().await;
+                                    players.push(PartyPlayerData {
+                                        name: member_name,
+                                        player_data,
+                                    });
+                                };
                             }),
                         })
                     }
@@ -379,32 +426,42 @@ pub async fn get_latest_info(
                             let app_handle_clone = app_handle.clone();
                             let api_key_clone = api_key.clone();
                             let join_player_clone = join_player.clone();
-                            let arc_players: Arc<Mutex<Vec<PartyPlayerData>>> =
-                                Arc::clone(&arc_party_info_players);
+                            let arc_players = Arc::clone(&arc_party_info_players);
+                            let arc_banned = Arc::clone(&arc_black_list);
 
                             handles.push(PlayerDataHandle {
                                 player_name: join_player.clone(),
                                 data_type: "PARTY".to_string(),
                                 handle: tokio::spawn(async move {
                                     let join_player_name = join_player_clone.clone();
+                                    let mut is_banned = false;
+                                    {
+                                        let banned_players = arc_banned.lock().await;
 
-                                    // let player_data_future = async move {
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        join_player_name.clone(),
-                                        3 * 60 * 60 * 1000,
-                                    )
-                                    .await;
+                                        for banned_player in banned_players.clone() {
+                                            if join_player_name == banned_player.name
+                                                && banned_player.reason == "PARTY"
+                                            {
+                                                is_banned = true
+                                            };
+                                        }
+                                    }
 
-                                    let mut players = arc_players.lock().await;
-                                    players.push(PartyPlayerData {
-                                        name: join_player_name,
-                                        player_data,
-                                    });
-                                    // };
+                                    if !is_banned {
+                                        let player_data = get_player_data(
+                                            app_handle_clone,
+                                            api_key_clone,
+                                            join_player_name.clone(),
+                                            3 * 60 * 60 * 1000,
+                                        )
+                                        .await;
 
-                                    // block_on(player_data_future);
+                                        let mut players = arc_players.lock().await;
+                                        players.push(PartyPlayerData {
+                                            name: join_player_name,
+                                            player_data,
+                                        });
+                                    };
                                 }),
                             })
                         }
@@ -431,7 +488,13 @@ pub async fn get_latest_info(
                                     } else {
                                         true
                                     }
-                                })
+                                });
+                                let arc_banned = Arc::clone(&arc_black_list);
+                                let mut banned_players = arc_banned.lock().await;
+                                banned_players.push(BannedPlayer {
+                                    reason: "PARTY".to_string(),
+                                    name: leave_player,
+                                });
 
                                 // leave_player_name.push(leave_player)
                             }
@@ -460,14 +523,37 @@ pub async fn get_latest_info(
                     }
                 }
             }
+            // delete urself (not only in the party but also in the game!!!)
+            // handles.retain(|handle| {
+            //     if handle.data_type == "PARTY" {
+            //         handle.player_name != username
+            //     } else if handle.data_type == "GAME" {
+            //         handle.player_name != username
+            //     } else {
+            //         true
+            //     }
+            // });
+            let arc_banned = Arc::clone(&arc_black_list);
+            let mut banned_players = arc_banned.lock().await;
+            banned_players.push(BannedPlayer {
+                reason: "PARTY".to_string(),
+                name: username.to_string(),
+            });
+            banned_players.push(BannedPlayer {
+                reason: "GAME".to_string(),
+                name: username.to_string(),
+            });
+            // ⬆️ No ZhenXun_awa
         }
     };
     if who_line != "" {
         if let Some(pos) = who_line.find("[CHAT] ONLINE:") {
-            let players: Vec<&str> = who_line[pos + "[CHAT] ONLINE:".len()..]
-                .trim()
-                .split(" ")
-                .collect();
+            let players_str_no_space = who_line[pos + "[CHAT] ONLINE:".len()..].replace(" ", "");
+            let players: Vec<&str> = players_str_no_space.split(",").collect();
+
+            // let formatted_players = players.join(", ");
+            // println!("Players: {}", formatted_players);
+            // ⬆️ success
 
             let party_players: Vec<String> = handles
                 .iter()
@@ -483,30 +569,46 @@ pub async fn get_latest_info(
                         break;
                     }
                 }
+                // println!("{} = {}", !is_party_player, player);
 
                 if !is_party_player {
                     // thread start!
                     let player_name_clone = player.to_string();
                     let api_key_clone = api_key.clone();
                     let app_handle_clone = app_handle.clone();
-                    let players_arc: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::clone(&arc_players);
+                    let players_arc = Arc::clone(&arc_players);
+                    let arc_banned = Arc::clone(&arc_black_list);
 
                     handles.push(PlayerDataHandle {
                         player_name: player.to_string(),
                         data_type: "GAME".to_string(),
                         handle: tokio::spawn(async move {
                             let username = player_name_clone.clone();
+                            let mut is_banned = false;
+                            {
+                                let banned_players = arc_banned.lock().await;
 
-                            let player_data = get_player_data(
-                                app_handle_clone,
-                                api_key_clone,
-                                username.clone(),
-                                24 * 60 * 60 * 1000,
-                            )
-                            .await;
+                                for banned_player in banned_players.clone() {
+                                    if username == banned_player.name
+                                        && banned_player.reason == "GAME"
+                                    {
+                                        is_banned = true
+                                    };
+                                }
+                            }
 
-                            let mut players = players_arc.lock().await;
-                            players.push(player_data)
+                            if !is_banned {
+                                let player_data = get_player_data(
+                                    app_handle_clone,
+                                    api_key_clone,
+                                    username.clone(),
+                                    24 * 60 * 60 * 1000,
+                                )
+                                .await;
+
+                                let mut players = players_arc.lock().await;
+                                players.push(player_data)
+                            }
                         }),
                     })
                 }
@@ -531,25 +633,40 @@ pub async fn get_latest_info(
                             let player_name_clone = join_player.to_string();
                             let api_key_clone = api_key.clone();
                             let app_handle_clone = app_handle.clone();
-                            let players_arc: Arc<Mutex<Vec<Option<PlayerData>>>> =
-                                Arc::clone(&arc_players);
+                            let players_arc = Arc::clone(&arc_players);
+                            let arc_banned = Arc::clone(&arc_black_list);
 
                             handles.push(PlayerDataHandle {
                                 player_name: join_player.clone(),
                                 handle: tokio::spawn(async move {
                                     let join_player_name = player_name_clone.clone();
+                                    let mut is_banned = false;
+                                    {
+                                        let banned_players = arc_banned.lock().await;
 
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        join_player_name.clone(),
-                                        24 * 30 * 60 * 1000,
-                                    )
-                                    .await;
+                                        for banned_player in banned_players.clone() {
+                                            println!("{:?}", banned_player);
+                                            if join_player_name == banned_player.name
+                                                && banned_player.reason == "GAME"
+                                            {
+                                                is_banned = true
+                                            };
+                                        }
+                                    }
 
-                                    let mut players = players_arc.lock().await;
+                                    if !is_banned {
+                                        let player_data = get_player_data(
+                                            app_handle_clone,
+                                            api_key_clone,
+                                            join_player_name.clone(),
+                                            24 * 30 * 60 * 1000,
+                                        )
+                                        .await;
 
-                                    players.push(player_data)
+                                        let mut players = players_arc.lock().await;
+
+                                        players.push(player_data)
+                                    }
                                 }),
                                 data_type: "GAME".to_string(),
                             })
@@ -572,6 +689,12 @@ pub async fn get_latest_info(
                                     } else {
                                         true
                                     }
+                                });
+                                let arc_banned = Arc::clone(&arc_black_list);
+                                let mut banned_players = arc_banned.lock().await;
+                                banned_players.push(BannedPlayer {
+                                    reason: "GAME".to_string(),
+                                    name: left_player,
                                 })
                             }
                         }
@@ -618,9 +741,11 @@ pub async fn get_latest_info(
     let username_clone = username.to_string();
     let arc_user_data = Arc::clone(&arc_personal_data);
     handles.push(PlayerDataHandle {
-        player_name: username.to_string(),
+        player_name: username.to_string() + " clone",
         data_type: "PERSONAL".to_string(),
+        // not applicable for personal data
         handle: tokio::spawn(async move {
+            println!("++++++++++++++发现真寻(PERSONAL)++++++++++++++");
             let username = username_clone.clone();
 
             let player_data = get_player_data(
@@ -639,6 +764,10 @@ pub async fn get_latest_info(
 
     // do all thread
     for player_data_handle in handles {
+        println!(
+            "Getting {}'s data, Type: {}",
+            player_data_handle.player_name, player_data_handle.data_type
+        );
         let result = player_data_handle.handle.await;
         match result {
             Ok(_) => (),
@@ -665,13 +794,13 @@ pub async fn get_latest_info(
         let players: tokio::sync::MutexGuard<Vec<Option<PlayerData>>> = arc_players.lock().await;
 
         for player in players.iter() {
-            player_data.push(player.clone())
+            player_data.push(player.clone());
         }
     }
     let elapsed: std::time::Duration = start_time.elapsed();
     println!(
-        "[Strength Judge] [info] Getting latest info in {:?}",
-        elapsed
+        "[Strength Judge] [info] Getting latest info in {:?}, Data: {:?}",
+        elapsed, return_data
     );
     Ok(return_data)
 }
@@ -693,7 +822,7 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
     let mut is_who = false;
     let mut is_location = true;
 
-    let location_pattern = Regex::new(r#"\{"server":"[^"]*","gametype":"[^"]*"\}"#).unwrap();
+    let location_pattern = Regex::new(r#"\{"server":"[^"]*","gametype":"[^"]*""#).unwrap();
     // let location_pattern = Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)离开了组队。").unwrap();
     let party_patterns = useful_party_lines_patterns.clone();
     let player_patterns = get_useful_player_lines_patterns().clone();

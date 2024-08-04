@@ -1,13 +1,27 @@
 import { Heading } from "@radix-ui/themes";
-import { useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-export default function PlayersInfo() {
+interface PlayersInfoProps {
+  playersInfo: null | (null | PlayerData)[];
+  otherThing?: string;
+}
+
+export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProps) {
   const { t } = useTranslation();
 
-  const [state, setState] = useState<"success" | "needWhoCommand" | "needLogPath" | "needKey">(
-    "needKey"
-  );
+  const state: "success" | "needWhoCommand" | "needLogPath" | "needUsername" | "needJoinServer" =
+    useMemo(() => {
+      console.log(playersInfo);
+      if (playersInfo !== null) {
+        return "success";
+      } else if (otherThing != undefined && otherThing != "") {
+        return otherThing as any;
+      } else {
+        return "needWhoCommand";
+      }
+    }, [playersInfo, otherThing]);
+
   return (
     <div
       className={
