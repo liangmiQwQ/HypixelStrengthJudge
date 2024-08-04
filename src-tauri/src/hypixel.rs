@@ -656,8 +656,8 @@ pub async fn get_latest_info(
     }
     let elapsed: std::time::Duration = start_time.elapsed();
     println!(
-        "[Strength Judge] [info] Getting latest info in {:?}, Data: {:?}",
-        elapsed, return_data
+        "[Strength Judge] [info] Getting latest info in {:?}",
+        elapsed
     );
     Ok(return_data)
 }
