@@ -1,9 +1,10 @@
-import { Heading } from "@radix-ui/themes";
+import { Heading, Table } from "@radix-ui/themes";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import PlayerName from "./PlayerName";
 
 interface PlayersInfoProps {
-  playersInfo: null | (null | PlayerData)[];
+  playersInfo: null | ReturnPlayerData[];
   otherThing?: string;
 }
 
@@ -12,7 +13,6 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
 
   const state: "success" | "needWhoCommand" | "needLogPath" | "needUsername" | "needJoinServer" =
     useMemo(() => {
-      console.log(playersInfo);
       if (playersInfo !== null) {
         return "success";
       } else if (otherThing != undefined && otherThing != "") {
@@ -38,6 +38,41 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
               {line}
             </Heading>
           ))}
+      {state == "success" && (
+        <Table.Root className="w-full">
+          <Table.Header>
+            <Table.ColumnHeaderCell>ID</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>{t("bw_level")}</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>{t("lobby_level")}</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>FKDR</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>BBLR</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>{t("win_streak")}</Table.ColumnHeaderCell>
+          </Table.Header>
+          <Table.Body>
+            {playersInfo?.map((item, index) => (
+              <Table.Row key={JSON.stringify(item) + index}>
+                <Table.RowHeaderCell>
+                  <PlayerName playerData={item.data} playerName={item.name}></PlayerName>
+                </Table.RowHeaderCell>
+                {item.data?.bw_fkdr !== "nick" && (
+                  <>
+                    <Table.Cell>{item.data?.bw_fkdr}</Table.Cell>
+                    <Table.Cell>{item.data?.bw_fkdr}</Table.Cell>
+                    <Table.Cell>{item.data?.bblr}</Table.Cell>
+                  </>
+                )}
+                {item.data?.bw_fkdr === "nick" && (
+                  <>
+                    <Table.Cell colSpan={5} className="text-center text-amber-800 font-bold">
+                      Nick
+                    </Table.Cell>
+                  </>
+                )}
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+      )}
     </div>
   );
 }

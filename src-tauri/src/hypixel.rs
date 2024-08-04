@@ -59,6 +59,12 @@ pub struct PlayerData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReturnPlayerData {
+    pub name: String,
+    pub data: Option<PlayerData>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Rank {
     pub name: String,               // vip vip+ default
     pub name_color: String,         // #xxxxxx
@@ -91,7 +97,7 @@ struct UsefulLines {
 
 #[derive(Serialize, Debug)]
 pub struct ReturnData {
-    pub player_data: Vec<Option<PlayerData>>,
+    pub player_data: Vec<ReturnPlayerData>,
     // Option nesting
     // outside option: maybe the player isn't in any games
     // inside option: maybe some players using Nick
@@ -162,7 +168,7 @@ pub async fn get_latest_info(
 
     let mut handles: Vec<PlayerDataHandle> = vec![];
     let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
-    let arc_players: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::new(Mutex::new(Vec::new()));
+    let arc_players: Arc<Mutex<Vec<ReturnPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
     let arc_personal_data: Arc<Mutex<Option<PlayerData>>> = Arc::new(Mutex::new(None));
     // tokio::spawn✌️
 
@@ -491,7 +497,10 @@ pub async fn get_latest_info(
                             .await;
 
                             let mut players = players_arc.lock().await;
-                            players.push(player_data)
+                            players.push(ReturnPlayerData {
+                                name: username,
+                                data: player_data,
+                            })
                         }),
                     })
                 }
@@ -533,7 +542,10 @@ pub async fn get_latest_info(
 
                                     let mut players = players_arc.lock().await;
 
-                                    players.push(player_data)
+                                    players.push(ReturnPlayerData {
+                                        name: join_player_name,
+                                        data: player_data,
+                                    })
                                 }),
                                 data_type: "GAME".to_string(),
                             })
@@ -647,7 +659,7 @@ pub async fn get_latest_info(
         arc_personal_data.lock().await;
     personal_data.data = option_personal_data.clone();
 
-    let players: tokio::sync::MutexGuard<Vec<Option<PlayerData>>> = arc_players.lock().await;
+    let players: tokio::sync::MutexGuard<Vec<ReturnPlayerData>> = arc_players.lock().await;
 
     println!("Player List Start!");
     for player in players.iter() {

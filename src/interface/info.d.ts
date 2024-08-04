@@ -1,5 +1,5 @@
 interface info {
-  player_data: null | (null | PlayerData)[];
+  player_data: null | ReturnPlayerData[];
   personal_data: PersonalData;
   party_info: null | PartyInfo;
 }
@@ -17,6 +17,11 @@ interface PlayerData {
   lobby_level: number;
   bblr: string;
   win_streak: string;
+}
+
+interface ReturnPlayerData {
+  name: string;
+  data: null | PlayerData;
 }
 
 interface PartyPlayerData {

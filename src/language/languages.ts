@@ -21,6 +21,8 @@ const en = {
     info_badApiKey: "Invalid Hypixel API key",
     info_needJoinServer: "Please join Hypixel first",
     bw_level: "BW Level",
+    lobby_level: "Lobby Level",
+    win_streak: "WS",
   },
 };
 
@@ -42,6 +44,8 @@ const zh = {
     info_badApiKey: "无效的 Hypixel API key",
     info_needJoinServer: "请先加入Hypixel服务器",
     bw_level: "BW等级",
+    lobby_level: "大厅等级",
+    win_streak: "连胜",
   },
 };
 

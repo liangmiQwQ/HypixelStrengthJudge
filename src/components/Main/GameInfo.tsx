@@ -8,7 +8,7 @@ import useConfig from "../../store/config";
 export default function GameInfo() {
   // invoke("get_latest_info");
   const [partyInfo, setPartyInfo] = useState<PartyInfo | null>(null);
-  const [playerInfo, setPlayerInfo] = useState<(PlayerData | null)[] | null>(null);
+  const [playerInfo, setPlayerInfo] = useState<ReturnPlayerData[] | null>(null);
   const { logPath, username, hypApiKey } = useConfig();
   const [otherThing, setOtherThing] = useState("");
 

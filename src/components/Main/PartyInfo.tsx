@@ -1,6 +1,7 @@
 import { Heading, Table } from "@radix-ui/themes";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import PlayerName from "./PlayerName";
 
 interface PartyInfoProps {
   partyInfo: PartyInfo | null;
@@ -48,6 +49,18 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
           <Table.Body>
             {partyInfo?.players
               .sort((a, b) => {
+                if (a.player_data != null && b.player_data != null) {
+                  const fkdrA = Number(a.player_data?.bw_fkdr);
+                  const fkdrB = Number(b.player_data?.bw_fkdr);
+
+                  // if B > A return value < 0, A in front of B
+                  // so we need B - A
+                  // return fkdrA - fkdrB;
+                  if (fkdrB - fkdrA != 0) {
+                    return fkdrB - fkdrA;
+                  }
+                }
+
                 const firstLetterA = a.name[0].toUpperCase();
                 const firstLetterB = b.name[0].toUpperCase();
 
@@ -59,59 +72,27 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                 }
                 return 0;
               })
-              .map((item, index) => {
-                function PlayerName({ item }: { item: PartyPlayerData }) {
-                  const [beforePlus, plus] = useMemo(() => {
-                    if (item.player_data?.rank.name.endsWith("+")) {
-                      return [item.player_data?.rank.name.slice(0, -1), "+"];
-                    } else {
-                      return [item.player_data?.rank.name, ""];
-                    }
-                  }, [item]);
-                  return (
-                    <span className="font-bold">
-                      {item.player_data?.rank.name != "DEFAULT" && (
-                        <>
-                          <span style={{ color: item.player_data?.rank.name_color as string }}>
-                            {"[" + beforePlus}
-                          </span>
-                          <span style={{ color: item.player_data?.rank.plus_color as string }}>
-                            {plus}
-                          </span>
-                          <span style={{ color: item.player_data?.rank.name_color as string }}>
-                            {"] "}
-                          </span>
-                        </>
-                      )}
-                      <span style={{ color: item.player_data?.rank.name_color as string }}>
-                        {item.name}
-                      </span>
-                    </span>
-                  );
-                }
-
-                return (
-                  <Table.Row key={item.toString() + index.toString()}>
-                    <Table.RowHeaderCell>
-                      <PlayerName item={item}></PlayerName>
-                    </Table.RowHeaderCell>
-                    {item.player_data?.bw_fkdr !== "nick" && (
-                      <>
-                        <Table.Cell>{item.player_data?.bw_level}</Table.Cell>
-                        <Table.Cell>{item.player_data?.bw_fkdr}</Table.Cell>
-                        <Table.Cell>{item.player_data?.bblr}</Table.Cell>
-                      </>
-                    )}
-                    {item.player_data?.bw_fkdr === "nick" && (
-                      <>
-                        <Table.Cell colSpan={3} className="text-center text-amber-800 font-bold">
-                          Nick
-                        </Table.Cell>
-                      </>
-                    )}
-                  </Table.Row>
-                );
-              })}
+              .map((item, index) => (
+                <Table.Row key={item.toString() + index.toString()}>
+                  <Table.RowHeaderCell>
+                    <PlayerName playerData={item?.player_data} playerName={item?.name}></PlayerName>
+                  </Table.RowHeaderCell>
+                  {item.player_data?.bw_fkdr !== "nick" && (
+                    <>
+                      <Table.Cell>{item.player_data?.bw_level}</Table.Cell>
+                      <Table.Cell>{item.player_data?.bw_fkdr}</Table.Cell>
+                      <Table.Cell>{item.player_data?.bblr}</Table.Cell>
+                    </>
+                  )}
+                  {item.player_data?.bw_fkdr === "nick" && (
+                    <>
+                      <Table.Cell colSpan={3} className="text-center text-amber-800 font-bold">
+                        Nick
+                      </Table.Cell>
+                    </>
+                  )}
+                </Table.Row>
+              ))}
           </Table.Body>
         </Table.Root>
       )}
