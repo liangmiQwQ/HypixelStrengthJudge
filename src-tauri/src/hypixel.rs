@@ -4,11 +4,12 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
 
 use crate::log_regex::{
     extract_party_leader, extract_party_members, extract_party_moderators, get_job_change_patterns,
@@ -104,14 +105,8 @@ pub struct PersonalData {
     pub data: Option<PlayerData>,
 }
 
-#[derive(Clone, Debug)]
-struct BannedPlayer {
-    reason: String,
-    name: String,
-}
-
 struct PlayerDataHandle {
-    handle: JoinHandle<()>,
+    handle: Pin<Box<dyn Future<Output = ()> + Send>>,
     player_name: String,
     data_type: String,
 }
@@ -169,7 +164,6 @@ pub async fn get_latest_info(
     let arc_party_info_players: Arc<Mutex<Vec<PartyPlayerData>>> = Arc::new(Mutex::new(Vec::new()));
     let arc_players: Arc<Mutex<Vec<Option<PlayerData>>>> = Arc::new(Mutex::new(Vec::new()));
     let arc_personal_data: Arc<Mutex<Option<PlayerData>>> = Arc::new(Mutex::new(None));
-    let arc_black_list: Arc<Mutex<Vec<BannedPlayer>>> = Arc::new(Mutex::new(vec![]));
     // tokio::spawn✌️
 
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
@@ -207,44 +201,27 @@ pub async fn get_latest_info(
                 let api_key_clone = api_key.clone();
                 let app_handle_clone = app_handle.clone();
                 let arc_players = Arc::clone(&arc_party_info_players);
-                let arc_banned = Arc::clone(&arc_black_list);
 
                 handles.push(PlayerDataHandle {
                     player_name: username.to_string(),
                     data_type: "PARTY".to_string(),
-                    handle: tokio::spawn(async move {
-                        println!("++++++++++++++发现真寻（组队）++++++++++++++");
+                    handle: Box::pin(async move {
+                        // println!("++++++++++++++发现真寻（组队）++++++++++++++");
                         // let mut players = arc_players.lock().unwrap();
                         let username = username_clone.clone();
-                        let mut is_banned = false;
-                        {
-                            let banned_players = arc_banned.lock().await;
+                        let player_data = get_player_data(
+                            app_handle_clone,
+                            api_key_clone,
+                            username.clone(),
+                            5 * 60 * 60 * 1000,
+                        )
+                        .await;
 
-                            for banned_player in banned_players.clone() {
-                                println!("{:?}", banned_player);
-                                if username == banned_player.name
-                                    && banned_player.reason == "PLAYER"
-                                {
-                                    is_banned = true;
-                                };
-                            }
-                        }
-
-                        if !is_banned {
-                            let player_data = get_player_data(
-                                app_handle_clone,
-                                api_key_clone,
-                                username.clone(),
-                                5 * 60 * 60 * 1000,
-                            )
-                            .await;
-
-                            let mut players = arc_players.lock().await;
-                            players.push(PartyPlayerData {
-                                name: username,
-                                player_data,
-                            });
-                        }
+                        let mut players = arc_players.lock().await;
+                        players.push(PartyPlayerData {
+                            name: username,
+                            player_data,
+                        });
                     }),
                 });
             } else {
@@ -259,41 +236,26 @@ pub async fn get_latest_info(
                     let app_handle_clone = app_handle.clone();
                     let leader_clone = leader.clone();
                     let arc_players = Arc::clone(&arc_party_info_players);
-                    let arc_banned = Arc::clone(&arc_black_list);
 
                     handles.push(PlayerDataHandle {
                         player_name: leader.clone(),
                         data_type: "PARTY".to_string(),
-                        handle: tokio::spawn(async move {
+                        handle: Box::pin(async move {
                             let leader_name = leader_clone.clone();
-                            let mut is_banned = false;
-                            {
-                                let banned_players = arc_banned.lock().await;
 
-                                for banned_player in banned_players.clone() {
-                                    if leader_name == banned_player.name
-                                        && banned_player.reason == "PARTY"
-                                    {
-                                        is_banned = true
-                                    };
-                                }
-                            }
+                            let player_data = get_player_data(
+                                app_handle_clone,
+                                api_key_clone,
+                                leader_name.clone(),
+                                3 * 60 * 60 * 1000,
+                            )
+                            .await;
 
-                            if !is_banned {
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    leader_name.clone(),
-                                    3 * 60 * 60 * 1000,
-                                )
-                                .await;
-
-                                let mut players = arc_players.lock().await;
-                                players.push(PartyPlayerData {
-                                    name: leader_name,
-                                    player_data,
-                                });
-                            };
+                            let mut players = arc_players.lock().await;
+                            players.push(PartyPlayerData {
+                                name: leader_name,
+                                player_data,
+                            });
                         }),
                     });
                 }
@@ -313,41 +275,25 @@ pub async fn get_latest_info(
                         let api_key_clone = api_key.clone();
                         let moderator_clone = moderator.clone();
                         let arc_players = Arc::clone(&arc_party_info_players);
-                        let arc_banned = Arc::clone(&arc_black_list);
 
                         handles.push(PlayerDataHandle {
                             player_name: moderator.clone(),
                             data_type: "PARTY".to_string(),
-                            handle: tokio::spawn(async move {
+                            handle: Box::pin(async move {
                                 let moderator_name = moderator_clone.clone();
-                                let mut is_banned = false;
-                                {
-                                    let banned_players = arc_banned.lock().await;
+                                let player_data = get_player_data(
+                                    app_handle_clone,
+                                    api_key_clone,
+                                    moderator_name.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await;
 
-                                    for banned_player in banned_players.clone() {
-                                        if moderator_name == banned_player.name
-                                            && banned_player.reason == "PARTY"
-                                        {
-                                            is_banned = true
-                                        };
-                                    }
-                                }
-
-                                if !is_banned {
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        moderator_name.clone(),
-                                        3 * 60 * 60 * 1000,
-                                    )
-                                    .await;
-
-                                    let mut players = arc_players.lock().await;
-                                    players.push(PartyPlayerData {
-                                        name: moderator_name,
-                                        player_data,
-                                    });
-                                };
+                                let mut players = arc_players.lock().await;
+                                players.push(PartyPlayerData {
+                                    name: moderator_name,
+                                    player_data,
+                                });
                             }),
                         });
                     }
@@ -362,42 +308,26 @@ pub async fn get_latest_info(
                         let api_key_clone = api_key.clone();
                         let member_clone = member.clone();
                         let arc_players = Arc::clone(&arc_party_info_players);
-                        let arc_banned = Arc::clone(&arc_black_list);
 
                         handles.push(PlayerDataHandle {
                             player_name: member.clone(),
                             data_type: "PARTY".to_string(),
-                            handle: tokio::spawn(async move {
+                            handle: Box::pin(async move {
                                 let member_name = member_clone.clone();
 
-                                let mut is_banned = false;
-                                {
-                                    let banned_players = arc_banned.lock().await;
+                                let player_data = get_player_data(
+                                    app_handle_clone,
+                                    api_key_clone,
+                                    member_name.clone(),
+                                    3 * 60 * 60 * 1000,
+                                )
+                                .await;
 
-                                    for banned_player in banned_players.clone() {
-                                        if member_name == banned_player.name
-                                            && banned_player.reason == "PARTY"
-                                        {
-                                            is_banned = true
-                                        };
-                                    }
-                                }
-
-                                if !is_banned {
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        member_name.clone(),
-                                        3 * 60 * 60 * 1000,
-                                    )
-                                    .await;
-
-                                    let mut players = arc_players.lock().await;
-                                    players.push(PartyPlayerData {
-                                        name: member_name,
-                                        player_data,
-                                    });
-                                };
+                                let mut players = arc_players.lock().await;
+                                players.push(PartyPlayerData {
+                                    name: member_name,
+                                    player_data,
+                                });
                             }),
                         })
                     }
@@ -427,41 +357,26 @@ pub async fn get_latest_info(
                             let api_key_clone = api_key.clone();
                             let join_player_clone = join_player.clone();
                             let arc_players = Arc::clone(&arc_party_info_players);
-                            let arc_banned = Arc::clone(&arc_black_list);
 
                             handles.push(PlayerDataHandle {
                                 player_name: join_player.clone(),
                                 data_type: "PARTY".to_string(),
-                                handle: tokio::spawn(async move {
+                                handle: Box::pin(async move {
                                     let join_player_name = join_player_clone.clone();
-                                    let mut is_banned = false;
-                                    {
-                                        let banned_players = arc_banned.lock().await;
 
-                                        for banned_player in banned_players.clone() {
-                                            if join_player_name == banned_player.name
-                                                && banned_player.reason == "PARTY"
-                                            {
-                                                is_banned = true
-                                            };
-                                        }
-                                    }
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        join_player_name.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await;
 
-                                    if !is_banned {
-                                        let player_data = get_player_data(
-                                            app_handle_clone,
-                                            api_key_clone,
-                                            join_player_name.clone(),
-                                            3 * 60 * 60 * 1000,
-                                        )
-                                        .await;
-
-                                        let mut players = arc_players.lock().await;
-                                        players.push(PartyPlayerData {
-                                            name: join_player_name,
-                                            player_data,
-                                        });
-                                    };
+                                    let mut players = arc_players.lock().await;
+                                    players.push(PartyPlayerData {
+                                        name: join_player_name,
+                                        player_data,
+                                    });
                                 }),
                             })
                         }
@@ -489,13 +404,6 @@ pub async fn get_latest_info(
                                         true
                                     }
                                 });
-                                let arc_banned = Arc::clone(&arc_black_list);
-                                let mut banned_players = arc_banned.lock().await;
-                                banned_players.push(BannedPlayer {
-                                    reason: "PARTY".to_string(),
-                                    name: leave_player,
-                                });
-
                                 // leave_player_name.push(leave_player)
                             }
                         }
@@ -524,24 +432,14 @@ pub async fn get_latest_info(
                 }
             }
             // delete urself (not only in the party but also in the game!!!)
-            // handles.retain(|handle| {
-            //     if handle.data_type == "PARTY" {
-            //         handle.player_name != username
-            //     } else if handle.data_type == "GAME" {
-            //         handle.player_name != username
-            //     } else {
-            //         true
-            //     }
-            // });
-            let arc_banned = Arc::clone(&arc_black_list);
-            let mut banned_players = arc_banned.lock().await;
-            banned_players.push(BannedPlayer {
-                reason: "PARTY".to_string(),
-                name: username.to_string(),
-            });
-            banned_players.push(BannedPlayer {
-                reason: "GAME".to_string(),
-                name: username.to_string(),
+            handles.retain(|handle| {
+                if handle.data_type == "PARTY" {
+                    handle.player_name != username
+                } else if handle.data_type == "GAME" {
+                    handle.player_name != username
+                } else {
+                    true
+                }
             });
             // ⬆️ No ZhenXun_awa
         }
@@ -577,38 +475,23 @@ pub async fn get_latest_info(
                     let api_key_clone = api_key.clone();
                     let app_handle_clone = app_handle.clone();
                     let players_arc = Arc::clone(&arc_players);
-                    let arc_banned = Arc::clone(&arc_black_list);
 
                     handles.push(PlayerDataHandle {
                         player_name: player.to_string(),
                         data_type: "GAME".to_string(),
-                        handle: tokio::spawn(async move {
+                        handle: Box::pin(async move {
                             let username = player_name_clone.clone();
-                            let mut is_banned = false;
-                            {
-                                let banned_players = arc_banned.lock().await;
 
-                                for banned_player in banned_players.clone() {
-                                    if username == banned_player.name
-                                        && banned_player.reason == "GAME"
-                                    {
-                                        is_banned = true
-                                    };
-                                }
-                            }
+                            let player_data = get_player_data(
+                                app_handle_clone,
+                                api_key_clone,
+                                username.clone(),
+                                24 * 60 * 60 * 1000,
+                            )
+                            .await;
 
-                            if !is_banned {
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    username.clone(),
-                                    24 * 60 * 60 * 1000,
-                                )
-                                .await;
-
-                                let mut players = players_arc.lock().await;
-                                players.push(player_data)
-                            }
+                            let mut players = players_arc.lock().await;
+                            players.push(player_data)
                         }),
                     })
                 }
@@ -634,39 +517,23 @@ pub async fn get_latest_info(
                             let api_key_clone = api_key.clone();
                             let app_handle_clone = app_handle.clone();
                             let players_arc = Arc::clone(&arc_players);
-                            let arc_banned = Arc::clone(&arc_black_list);
 
                             handles.push(PlayerDataHandle {
                                 player_name: join_player.clone(),
-                                handle: tokio::spawn(async move {
+                                handle: Box::pin(async move {
                                     let join_player_name = player_name_clone.clone();
-                                    let mut is_banned = false;
-                                    {
-                                        let banned_players = arc_banned.lock().await;
 
-                                        for banned_player in banned_players.clone() {
-                                            println!("{:?}", banned_player);
-                                            if join_player_name == banned_player.name
-                                                && banned_player.reason == "GAME"
-                                            {
-                                                is_banned = true
-                                            };
-                                        }
-                                    }
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        join_player_name.clone(),
+                                        24 * 30 * 60 * 1000,
+                                    )
+                                    .await;
 
-                                    if !is_banned {
-                                        let player_data = get_player_data(
-                                            app_handle_clone,
-                                            api_key_clone,
-                                            join_player_name.clone(),
-                                            24 * 30 * 60 * 1000,
-                                        )
-                                        .await;
+                                    let mut players = players_arc.lock().await;
 
-                                        let mut players = players_arc.lock().await;
-
-                                        players.push(player_data)
-                                    }
+                                    players.push(player_data)
                                 }),
                                 data_type: "GAME".to_string(),
                             })
@@ -690,12 +557,6 @@ pub async fn get_latest_info(
                                         true
                                     }
                                 });
-                                let arc_banned = Arc::clone(&arc_black_list);
-                                let mut banned_players = arc_banned.lock().await;
-                                banned_players.push(BannedPlayer {
-                                    reason: "GAME".to_string(),
-                                    name: left_player,
-                                })
                             }
                         }
                     }
@@ -744,8 +605,7 @@ pub async fn get_latest_info(
         player_name: username.to_string() + " clone",
         data_type: "PERSONAL".to_string(),
         // not applicable for personal data
-        handle: tokio::spawn(async move {
-            println!("++++++++++++++发现真寻(PERSONAL)++++++++++++++");
+        handle: Box::pin(async move {
             let username = username_clone.clone();
 
             let player_data = get_player_data(
@@ -763,17 +623,14 @@ pub async fn get_latest_info(
     });
 
     // do all thread
+    let mut futures = Vec::new();
     for player_data_handle in handles {
-        println!(
-            "Getting {}'s data, Type: {}",
-            player_data_handle.player_name, player_data_handle.data_type
-        );
-        let result = player_data_handle.handle.await;
-        match result {
-            Ok(_) => (),
-            Err(e) => eprintln!("Task failed: {:?}", e),
-        }
+        futures.push(tokio::spawn(player_data_handle.handle));
         // player_data_handle.handle.join().unwrap();
+    }
+    for future in futures {
+        future.await.unwrap();
+        // wait all
     }
 
     if let Some(party_info) = &mut return_data.party_info {
