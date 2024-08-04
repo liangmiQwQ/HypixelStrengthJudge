@@ -49,27 +49,49 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
             <Table.ColumnHeaderCell>{t("win_streak")}</Table.ColumnHeaderCell>
           </Table.Header>
           <Table.Body>
-            {playersInfo?.map((item, index) => (
-              <Table.Row key={JSON.stringify(item) + index}>
-                <Table.RowHeaderCell>
-                  <PlayerName playerData={item.data} playerName={item.name}></PlayerName>
-                </Table.RowHeaderCell>
-                {item.data?.bw_fkdr !== "nick" && (
-                  <>
-                    <Table.Cell>{item.data?.bw_fkdr}</Table.Cell>
-                    <Table.Cell>{item.data?.bw_fkdr}</Table.Cell>
-                    <Table.Cell>{item.data?.bblr}</Table.Cell>
-                  </>
-                )}
-                {item.data?.bw_fkdr === "nick" && (
-                  <>
-                    <Table.Cell colSpan={5} className="text-center text-amber-800 font-bold">
-                      Nick
-                    </Table.Cell>
-                  </>
-                )}
-              </Table.Row>
-            ))}
+            {playersInfo
+              ?.sort((a, b) => {
+                if (a.data != null && b.data != null) {
+                  const fkdrA = Number(a.data?.bw_fkdr);
+                  const fkdrB = Number(b.data?.bw_fkdr);
+
+                  // if B > A return value < 0, A in front of B
+                  // so we need B - A
+                  // return fkdrA - fkdrB;
+                  if (fkdrB - fkdrA != 0 && !Number.isNaN(fkdrB - fkdrA)) {
+                    // console.log(a.player_data, b.player_data);
+                    return fkdrB - fkdrA;
+                  }
+                }
+
+                const letterA = a.name.toUpperCase();
+                const letterB = b.name.toUpperCase();
+
+                return letterA.localeCompare(letterB);
+              })
+              .map((item, index) => (
+                <Table.Row key={JSON.stringify(item) + index}>
+                  <Table.RowHeaderCell>
+                    <PlayerName playerData={item.data} playerName={item.name}></PlayerName>
+                  </Table.RowHeaderCell>
+                  {item.data?.bw_fkdr !== "nick" && (
+                    <>
+                      <Table.Cell>{item.data?.bw_level}</Table.Cell>
+                      <Table.Cell>{item.data?.lobby_level}</Table.Cell>
+                      <Table.Cell>{item.data?.bw_fkdr}</Table.Cell>
+                      <Table.Cell>{item.data?.bblr}</Table.Cell>
+                      <Table.Cell>{item.data?.win_streak}</Table.Cell>
+                    </>
+                  )}
+                  {item.data?.bw_fkdr === "nick" && (
+                    <>
+                      <Table.Cell colSpan={5} className="text-center text-amber-800 font-bold">
+                        Nick
+                      </Table.Cell>
+                    </>
+                  )}
+                </Table.Row>
+              ))}
           </Table.Body>
         </Table.Root>
       )}

@@ -52,7 +52,6 @@ export default function GameInfo() {
           username,
           apiKey: hypApiKey,
         });
-        console.log(JSON.stringify(info));
 
         if (
           (info as info).personal_data.location.server_type === "UNKNOWN" &&

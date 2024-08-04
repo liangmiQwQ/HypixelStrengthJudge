@@ -56,21 +56,16 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                   // if B > A return value < 0, A in front of B
                   // so we need B - A
                   // return fkdrA - fkdrB;
-                  if (fkdrB - fkdrA != 0) {
+                  if (fkdrB - fkdrA != 0 && !Number.isNaN(fkdrB - fkdrA)) {
+                    // console.log(a.player_data, b.player_data);
                     return fkdrB - fkdrA;
                   }
                 }
 
-                const firstLetterA = a.name[0].toUpperCase();
-                const firstLetterB = b.name[0].toUpperCase();
+                const letterA = a.name.toUpperCase();
+                const letterB = b.name.toUpperCase();
 
-                if (firstLetterA < firstLetterB) {
-                  return -1;
-                }
-                if (firstLetterA > firstLetterB) {
-                  return 1;
-                }
-                return 0;
+                return letterA.localeCompare(letterB);
               })
               .map((item, index) => (
                 <Table.Row key={item.toString() + index.toString()}>

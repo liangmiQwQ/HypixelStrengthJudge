@@ -661,12 +661,9 @@ pub async fn get_latest_info(
 
     let players: tokio::sync::MutexGuard<Vec<ReturnPlayerData>> = arc_players.lock().await;
 
-    println!("Player List Start!");
     for player in players.iter() {
-        println!("{:?}", player);
         return_data.player_data.push(player.clone());
     }
-    println!("Player List End!");
 
     let elapsed: std::time::Duration = start_time.elapsed();
     println!(
