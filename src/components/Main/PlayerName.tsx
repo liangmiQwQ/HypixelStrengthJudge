@@ -3,9 +3,11 @@ import { useMemo } from "react";
 function PlayerName({
   playerData,
   playerName,
+  className,
 }: {
   playerData: PlayerData | null;
   playerName?: string;
+  className?: string;
 }) {
   const [beforePlus, plus] = useMemo(() => {
     if (playerData?.rank.name.endsWith("+")) {
@@ -15,7 +17,7 @@ function PlayerName({
     }
   }, [playerData]);
   return (
-    <span className="font-bold">
+    <span className={`font-bold ${className}`}>
       {playerData?.rank.name != "DEFAULT" && (
         <>
           <span style={{ color: playerData?.rank.name_color as string }}>{"[" + beforePlus}</span>

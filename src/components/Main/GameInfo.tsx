@@ -9,6 +9,7 @@ export default function GameInfo() {
   // invoke("get_latest_info");
   const [partyInfo, setPartyInfo] = useState<PartyInfo | null>(null);
   const [playerInfo, setPlayerInfo] = useState<ReturnPlayerData[] | null>(null);
+  const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const { logPath, username, hypApiKey } = useConfig();
   const [otherThing, setOtherThing] = useState("");
 
@@ -61,6 +62,7 @@ export default function GameInfo() {
         } else {
           setPlayerInfo((info as info).player_data);
           setPartyInfo((info as info).party_info);
+          setPersonalData((info as info).personal_data);
         }
       }
     }
@@ -88,7 +90,7 @@ export default function GameInfo() {
           <PartyInfo partyInfo={partyInfo} otherThing={otherThing} />
         </div>
         <div className="h-1/2 w-full sm:pt-1 md:pt-2 lg:pt-4">
-          <UserInfo />
+          <UserInfo personalData={personalData} otherThing={otherThing} name={username} />
         </div>
       </div>
     </div>

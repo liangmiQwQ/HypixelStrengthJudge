@@ -11,16 +11,15 @@ interface PlayersInfoProps {
 export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProps) {
   const { t } = useTranslation();
 
-  const state: "success" | "needWhoCommand" | "needLogPath" | "needUsername" | "needJoinServer" =
-    useMemo(() => {
-      if (playersInfo !== null) {
-        return "success";
-      } else if (otherThing != undefined && otherThing != "") {
-        return otherThing as any;
-      } else {
-        return "needWhoCommand";
-      }
-    }, [playersInfo, otherThing]);
+  const state: string = useMemo(() => {
+    if (playersInfo !== null) {
+      return "success";
+    } else if (otherThing != undefined && otherThing != "") {
+      return otherThing as any;
+    } else {
+      return "needWhoCommand";
+    }
+  }, [playersInfo, otherThing]);
 
   return (
     <div
@@ -41,12 +40,14 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
       {state == "success" && (
         <Table.Root className="w-full">
           <Table.Header>
-            <Table.ColumnHeaderCell>ID</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>{t("bw_level")}</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>{t("lobby_level")}</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>FKDR</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>BBLR</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>{t("win_streak")}</Table.ColumnHeaderCell>
+            <Table.Row>
+              <Table.ColumnHeaderCell>ID</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>{t("bw_level")}</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>{t("lobby_level")}</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>FKDR</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>BBLR</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>{t("win_streak")}</Table.ColumnHeaderCell>
+            </Table.Row>
           </Table.Header>
           <Table.Body>
             {playersInfo

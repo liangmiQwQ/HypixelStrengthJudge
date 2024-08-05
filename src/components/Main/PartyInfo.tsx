@@ -11,7 +11,7 @@ interface PartyInfoProps {
 export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
   const { t } = useTranslation();
 
-  const state: "success" | "needPLCommand" | "needLogPath" | "needUsername" = useMemo(() => {
+  const state: string = useMemo(() => {
     if (partyInfo !== null) {
       return "success";
     } else if (otherThing != undefined || otherThing != "") {

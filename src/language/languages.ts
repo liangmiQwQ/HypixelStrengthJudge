@@ -20,9 +20,13 @@ const en = {
     info_needKey: "Please set your personal Hypixel API key in the settings",
     info_badApiKey: "Invalid Hypixel API key",
     info_needJoinServer: "Please join Hypixel first",
+    info_somethingError: "We have some unknown errors, please wait a moment and try again! ",
     bw_level: "BW Level",
     lobby_level: "Lobby Level",
     win_streak: "WS",
+    location: "Location",
+    map: "map",
+    gameMode: "Game Mode",
   },
 };
 
@@ -43,9 +47,13 @@ const zh = {
     info_needKey: "请在设置中填写您的Hypixel API key",
     info_badApiKey: "无效的 Hypixel API key",
     info_needJoinServer: "请先加入Hypixel服务器",
+    info_somethingError: "发生了未知的错误! 请等待一段时间后重试!",
     bw_level: "BW等级",
     lobby_level: "大厅等级",
     win_streak: "连胜",
+    location: "位置",
+    map: "地图",
+    gameMode: "游戏模式",
   },
 };
 

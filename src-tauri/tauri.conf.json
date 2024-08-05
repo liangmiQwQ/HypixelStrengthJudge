@@ -24,7 +24,7 @@
         "minHeight": 650,
         "maxHeight": 1000,
         "maxWidth": 1400,
-        "minWidth": 1000,
+        "minWidth": 1100,
         "titleBarStyle": "Overlay",
         "title": ""
       }
