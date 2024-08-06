@@ -440,17 +440,6 @@ pub async fn get_latest_info(
                     }
                 }
             }
-            // delete urself (not only in the party but also in the game!!!)
-            handles.retain(|handle| {
-                if handle.data_type == "PARTY" {
-                    return handle.player_name.to_uppercase() != username.to_uppercase();
-                } else if handle.data_type == "GAME" {
-                    return handle.player_name.to_uppercase() != username.to_uppercase();
-                } else {
-                    true
-                }
-            });
-            // ⬆️ No ZhenXun_awa
         }
     };
     if who_line != "" {
@@ -579,6 +568,17 @@ pub async fn get_latest_info(
             }
         }
     }
+    // delete urself (not only in the party but also in the game!!!)
+    handles.retain(|handle| {
+        if handle.data_type == "PARTY" {
+            return handle.player_name.to_uppercase() != username.to_uppercase();
+        } else if handle.data_type == "GAME" {
+            return handle.player_name.to_uppercase() != username.to_uppercase();
+        } else {
+            true
+        }
+    });
+    // ⬆️ No ZhenXun_awa
     if location_line != "" {
         if let Some(pos) = Regex::new(r#"\{"server""#)
             .unwrap()

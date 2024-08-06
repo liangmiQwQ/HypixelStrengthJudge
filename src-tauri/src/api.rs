@@ -92,9 +92,10 @@ pub async fn get_player_data(
                 // lobby level
                 if let Some(network_exp) = player_data_server
                     .get("networkExp")
-                    .and_then(|network_exp| network_exp.as_u64())
+                    .and_then(|network_exp| network_exp.as_f64())
                 {
-                    player_data.lobby_level = get_hypixel_lobby_level(network_exp)
+                    println!("success: {:?}", player_data_server.get("networkExp"));
+                    player_data.lobby_level = get_hypixel_lobby_level(network_exp as u64);
                 }
 
                 // bw level
@@ -103,7 +104,7 @@ pub async fn get_player_data(
                         .get("bedwars_level")
                         .and_then(|lvl| lvl.as_u64())
                     {
-                        player_data.bw_level = bedwars_level as u16
+                        player_data.bw_level = bedwars_level as u16;
                     }
                 }
 
