@@ -10,7 +10,9 @@ function PlayerName({
   className?: string;
 }) {
   const [beforePlus, plus] = useMemo(() => {
-    if (playerData?.rank.name.endsWith("+")) {
+    if (playerData?.rank.name.endsWith("++")) {
+      return [playerData?.rank.name.slice(0, -2), "++"];
+    } else if (playerData?.rank.name.endsWith("+")) {
       return [playerData?.rank.name.slice(0, -1), "+"];
     } else {
       return [playerData?.rank.name, ""];
