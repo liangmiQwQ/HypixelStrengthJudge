@@ -269,73 +269,76 @@ pub async fn get_latest_info(
 
             // six times run
             for add_number in 0..6 {
-                let next_line = useful_lines.pl_lines[1 + add_number].clone();
-                if next_line.contains("Party Moderators:") {
-                    let moderators: Vec<_> = match extract_party_moderators(next_line.as_str()) {
-                        Some(moderators) => moderators,
-                        None => vec![],
-                    };
+                if useful_lines.pl_lines.len() > (1 + add_number) {
+                    let next_line = useful_lines.pl_lines[1 + add_number].clone();
+                    if next_line.contains("Party Moderators:") {
+                        let moderators: Vec<_> = match extract_party_moderators(next_line.as_str())
+                        {
+                            Some(moderators) => moderators,
+                            None => vec![],
+                        };
 
-                    for moderator in moderators.iter() {
-                        let app_handle_clone = app_handle.clone();
-                        let api_key_clone = api_key.clone();
-                        let moderator_clone = moderator.clone();
-                        let arc_players = Arc::clone(&arc_party_info_players);
+                        for moderator in moderators.iter() {
+                            let app_handle_clone = app_handle.clone();
+                            let api_key_clone = api_key.clone();
+                            let moderator_clone = moderator.clone();
+                            let arc_players = Arc::clone(&arc_party_info_players);
 
-                        handles.push(PlayerDataHandle {
-                            player_name: moderator.clone(),
-                            data_type: "PARTY".to_string(),
-                            handle: Box::pin(async move {
-                                let moderator_name = moderator_clone.clone();
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    moderator_name.clone(),
-                                    3 * 60 * 60 * 1000,
-                                )
-                                .await;
+                            handles.push(PlayerDataHandle {
+                                player_name: moderator.clone(),
+                                data_type: "PARTY".to_string(),
+                                handle: Box::pin(async move {
+                                    let moderator_name = moderator_clone.clone();
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        moderator_name.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await;
 
-                                let mut players = arc_players.lock().await;
-                                players.push(PartyPlayerData {
-                                    name: moderator_name,
-                                    player_data,
-                                });
-                            }),
-                        });
-                    }
-                } else if next_line.contains("Party Members:") {
-                    let members = match extract_party_members(next_line.as_str()) {
-                        Some(members) => members,
-                        None => vec![],
-                    };
+                                    let mut players = arc_players.lock().await;
+                                    players.push(PartyPlayerData {
+                                        name: moderator_name,
+                                        player_data,
+                                    });
+                                }),
+                            });
+                        }
+                    } else if next_line.contains("Party Members:") {
+                        let members = match extract_party_members(next_line.as_str()) {
+                            Some(members) => members,
+                            None => vec![],
+                        };
 
-                    for member in members.iter() {
-                        let app_handle_clone = app_handle.clone();
-                        let api_key_clone = api_key.clone();
-                        let member_clone = member.clone();
-                        let arc_players = Arc::clone(&arc_party_info_players);
+                        for member in members.iter() {
+                            let app_handle_clone = app_handle.clone();
+                            let api_key_clone = api_key.clone();
+                            let member_clone = member.clone();
+                            let arc_players = Arc::clone(&arc_party_info_players);
 
-                        handles.push(PlayerDataHandle {
-                            player_name: member.clone(),
-                            data_type: "PARTY".to_string(),
-                            handle: Box::pin(async move {
-                                let member_name = member_clone.clone();
+                            handles.push(PlayerDataHandle {
+                                player_name: member.clone(),
+                                data_type: "PARTY".to_string(),
+                                handle: Box::pin(async move {
+                                    let member_name = member_clone.clone();
 
-                                let player_data = get_player_data(
-                                    app_handle_clone,
-                                    api_key_clone,
-                                    member_name.clone(),
-                                    3 * 60 * 60 * 1000,
-                                )
-                                .await;
+                                    let player_data = get_player_data(
+                                        app_handle_clone,
+                                        api_key_clone,
+                                        member_name.clone(),
+                                        3 * 60 * 60 * 1000,
+                                    )
+                                    .await;
 
-                                let mut players = arc_players.lock().await;
-                                players.push(PartyPlayerData {
-                                    name: member_name,
-                                    player_data,
-                                });
-                            }),
-                        })
+                                    let mut players = arc_players.lock().await;
+                                    players.push(PartyPlayerData {
+                                        name: member_name,
+                                        player_data,
+                                    });
+                                }),
+                            })
+                        }
                     }
                 }
             }
