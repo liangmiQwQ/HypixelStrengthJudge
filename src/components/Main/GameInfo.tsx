@@ -63,6 +63,7 @@ export default function GameInfo() {
           setPlayerInfo((info as info).player_data);
           setPartyInfo((info as info).party_info);
           setPersonalData((info as info).personal_data);
+          setOtherThing("");
         }
       }
     }

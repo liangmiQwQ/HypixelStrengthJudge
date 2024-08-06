@@ -12,7 +12,7 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
   const { t } = useTranslation();
 
   const state: string = useMemo(() => {
-    if (playersInfo !== null) {
+    if (playersInfo !== null && playersInfo.length != 0) {
       return "success";
     } else if (otherThing != undefined && otherThing != "") {
       return otherThing as any;

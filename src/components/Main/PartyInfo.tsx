@@ -14,7 +14,7 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
   const state: string = useMemo(() => {
     if (partyInfo !== null) {
       return "success";
-    } else if (otherThing != undefined || otherThing != "") {
+    } else if (otherThing != undefined && otherThing != "") {
       return otherThing as any;
     } else {
       return "needPLCommand";

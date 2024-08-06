@@ -14,9 +14,10 @@ export default function UserInfo({ personalData, name, otherThing }: UserInfoPro
   const { t } = useTranslation();
 
   const state: string = useMemo(() => {
+    console.log(JSON.stringify(personalData));
     if (personalData !== null) {
       return "success";
-    } else if (otherThing != undefined || otherThing != "") {
+    } else if (otherThing != undefined && otherThing != "") {
       return otherThing as any;
     } else {
       return "somethingError";

@@ -1,4 +1,6 @@
 import { Select } from "@radix-ui/themes";
+import { debounce } from "lodash";
+import { useCallback } from "react";
 
 export interface settingOptionProps {
   tipsText: string;
@@ -21,6 +23,9 @@ export default function SettingOption({
   const handleChange = (value: any) => {
     onValueChange?.(value);
   };
+
+  const debouncedHandleChange = useCallback(debounce(handleChange, 300), [handleChange]);
+
   return (
     <div
       className={
@@ -48,7 +53,7 @@ export default function SettingOption({
       {optionType === "input" && (
         <input
           defaultValue={defaultValue}
-          onChange={e => handleChange(e.target.value)}
+          onChange={e => debouncedHandleChange(e.target.value)}
           placeholder={placeholder}
           className="flex-1 max-w-40 border-b-slate-600 focus:border-b-black border-b-[1px] outline-none"
         />
