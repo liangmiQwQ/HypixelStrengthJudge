@@ -94,7 +94,6 @@ pub async fn get_player_data(
                     .get("networkExp")
                     .and_then(|network_exp| network_exp.as_f64())
                 {
-                    println!("success: {:?}", player_data_server.get("networkExp"));
                     player_data.lobby_level = get_hypixel_lobby_level(network_exp as u64);
                 }
 

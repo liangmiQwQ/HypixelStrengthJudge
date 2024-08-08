@@ -502,6 +502,7 @@ pub async fn get_latest_info(
             let player_leave_patterns = get_player_leave_patterns();
             // (someone joined someone left todo)
             for message in useful_lines.player_lines.iter() {
+                // println!("{}", message);
                 let mut is_message_used = false;
 
                 // join
@@ -513,34 +514,46 @@ pub async fn get_latest_info(
                             .map(|match_| match_.as_str().to_string())
                         {
                             is_message_used = true;
+                            let party_players: Vec<String> = handles
+                                .iter()
+                                .map(|handle| handle.player_name.clone())
+                                .collect();
+                            let mut is_party_player = false;
+                            for party_player_name in &party_players {
+                                if party_player_name == &join_player {
+                                    is_party_player = true;
+                                    break;
+                                }
+                            }
+                            if !is_party_player {
+                                let player_name_clone = join_player.to_string();
+                                let api_key_clone = api_key.clone();
+                                let app_handle_clone = app_handle.clone();
+                                let players_arc = Arc::clone(&arc_players);
 
-                            let player_name_clone = join_player.to_string();
-                            let api_key_clone = api_key.clone();
-                            let app_handle_clone = app_handle.clone();
-                            let players_arc = Arc::clone(&arc_players);
+                                handles.push(PlayerDataHandle {
+                                    player_name: join_player.clone(),
+                                    handle: Box::pin(async move {
+                                        let join_player_name = player_name_clone.clone();
 
-                            handles.push(PlayerDataHandle {
-                                player_name: join_player.clone(),
-                                handle: Box::pin(async move {
-                                    let join_player_name = player_name_clone.clone();
+                                        let player_data = get_player_data(
+                                            app_handle_clone,
+                                            api_key_clone,
+                                            join_player_name.clone(),
+                                            24 * 30 * 60 * 1000,
+                                        )
+                                        .await;
 
-                                    let player_data = get_player_data(
-                                        app_handle_clone,
-                                        api_key_clone,
-                                        join_player_name.clone(),
-                                        24 * 30 * 60 * 1000,
-                                    )
-                                    .await;
+                                        let mut players = players_arc.lock().await;
 
-                                    let mut players = players_arc.lock().await;
-
-                                    players.push(ReturnPlayerData {
-                                        name: join_player_name,
-                                        data: player_data,
-                                    })
-                                }),
-                                data_type: "GAME".to_string(),
-                            })
+                                        players.push(ReturnPlayerData {
+                                            name: join_player_name,
+                                            data: player_data,
+                                        })
+                                    }),
+                                    data_type: "GAME".to_string(),
+                                })
+                            }
                         }
                     }
                 }
@@ -738,12 +751,16 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                 is_pl = true
             } else if !is_who && line.contains("[CHAT] ONLINE: ") {
                 latest_log_file.useful_line.who_line = Some(line.to_string());
-                is_who = true
+                is_who = true;
+                // Once wholine is found, all previous useful_partylines are useless and will be cleared directly. In addition, since wholine is found, party_line will not be affected.
+                latest_log_file.useful_line.player_lines.clear();
                 // todo: who line
                 // need only one who line
             } else if location_pattern.is_match(line) {
                 latest_log_file.useful_line.location_line = Some(line.to_string());
-                is_location = true
+                is_location = true;
+                latest_log_file.useful_line.party_lines.clear();
+                // the same of who line
                 // todo: location line
                 // if pl line and location line are all found => break
             } else {
@@ -759,7 +776,8 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                             break;
                         }
                     }
-                } else if !is_who {
+                }
+                if !is_who {
                     // all message after is_who
                     for pattern in &player_patterns {
                         if pattern.is_match(&line) {

@@ -85,7 +85,7 @@ pub fn get_player_leave_patterns() -> Vec<Regex> {
         Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+)离开了游戏").unwrap(),
         Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+) disconnected.").unwrap(),
         Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+)断开连接").unwrap(),
-        Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+)").unwrap(),
+        // Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+)").unwrap(),
         Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+) .*? FINAL KILL!").unwrap(),
         Regex::new(r"\[CHAT\] ([a-zA-Z0-9_]+)[\u4e00-\u9fa5].*? 最终击杀！").unwrap(), // CHINESE
     ]
