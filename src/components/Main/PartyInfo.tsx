@@ -23,7 +23,7 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
   return (
     <div
       className={
-        "w-full p-3 h-full info-shadow-top shadow-slate-600 rounded-lg" +
+        "w-full p-3 h-full info-shadow-top shadow-slate-600 rounded-lg sb" +
         (state === "success" ? "" : " flex justify-center items-center flex-col")
       }
     >

@@ -118,11 +118,6 @@ struct PlayerDataHandle {
 }
 
 lazy_static! {
-    static ref LOCATION: Mutex<String> = Mutex::new(String::from("LOBBY"));
-    static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(vec![]);
-    static ref PLAYERS_DATA: Mutex<Vec<PlayerData>> = Mutex::new(vec![]);
-    static ref USER_ID: Mutex<String> = Mutex::new(String::from(""));
-    static ref PARTY_LIST: Mutex<Vec<String>> = Mutex::new(vec![]);
     static ref LATEST_LOG_FILE_PATH: StdMutex<LogFilePath> = StdMutex::new(LogFilePath {
         path: String::from("unknown"),
         timestamp: current_timestamp(),

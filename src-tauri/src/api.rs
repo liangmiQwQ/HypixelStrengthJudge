@@ -314,7 +314,7 @@ async fn get_cache_file(app_handle: tauri::AppHandle) -> Vec<CachePlayerData> {
 }
 
 async fn save_cache_file(app_handle: tauri::AppHandle, value: Vec<CachePlayerData>) {
-    // let _lock = CACHE_FILE_MUTEX.lock().await;
+    let _lock = CACHE_FILE_MUTEX.lock().await;
 
     // if let Some(cache_dir) = app_cache_dir(&app_handle.config()) {
     //     let cache_path = cache_dir.join("api_cache.json");

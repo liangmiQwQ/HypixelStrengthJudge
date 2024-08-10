@@ -24,7 +24,7 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
   return (
     <div
       className={
-        "w-full p-3 min-h-full info-shadow shadow-slate-600 rounded-lg" +
+        "w-full p-3 min-h-full info-shadow shadow-slate-600 rounded-lg overflow-x-visible sb" +
         (state === "success" ? "" : " flex justify-center items-center flex-col")
       }
     >
