@@ -146,6 +146,7 @@ pub async fn get_latest_info(
     app_handle: tauri::AppHandle,
     api_key: String,
 ) -> Result<ReturnData, ()> {
+    println!("get latest info has been run");
     let start_time = Instant::now();
     let mut return_data = ReturnData {
         player_data: Vec::new(),

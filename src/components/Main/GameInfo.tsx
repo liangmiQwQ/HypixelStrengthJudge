@@ -31,9 +31,10 @@ export default function GameInfo() {
   }, [hypApiKey]);
 
   useEffect(() => {
-    // if (runTimes) return;
-    runTimes.current++;
-    if (runTimes.current === 1) return;
+    if (import.meta.env.DEV) {
+      runTimes.current++;
+      if (runTimes.current === 1) return;
+    }
 
     const handleTimer = async () => {
       await getLatestInfo();
@@ -48,12 +49,14 @@ export default function GameInfo() {
       } else if (hypApiKey === "" && otherThing != "badApiKey") {
         setOtherThing("needKey");
       } else {
+        console.log("Start invoke");
         const info: any = await invoke("get_latest_info", {
           logDirPath: logPath,
           username,
           apiKey: hypApiKey,
         });
 
+        console.log(JSON.stringify(info));
         if (
           (info as info).personal_data.location.server_type === "UNKNOWN" &&
           otherThing != "badApiKey"
