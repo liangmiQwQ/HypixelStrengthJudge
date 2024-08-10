@@ -53,18 +53,31 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
             {playersInfo
               ?.sort((a, b) => {
                 if (a.data != null && b.data != null) {
-                  const fkdrA = Number(a.data?.bw_fkdr);
-                  const fkdrB = Number(b.data?.bw_fkdr);
+                  // Step 1: Check if bw_fkdr is 'nick'
+                  const isANick = a.data.bw_fkdr === "nick";
+                  const isBNick = b.data.bw_fkdr === "nick";
 
-                  // if B > A return value < 0, A in front of B
-                  // so we need B - A
-                  // return fkdrA - fkdrB;
-                  if (fkdrB - fkdrA != 0 && !Number.isNaN(fkdrB - fkdrA)) {
-                    // console.log(a.player_data, b.player_data);
-                    return fkdrB - fkdrA;
+                  if (isANick && !isBNick) {
+                    return -1; // a should come before b
+                  }
+                  if (!isANick && isBNick) {
+                    return 1; // b should come before a
+                  }
+
+                  // Step 2: Convert bw_fkdr to number and sort numerically
+                  const fkdrA = isNaN(Number(a.data.bw_fkdr))
+                    ? Number.MAX_VALUE
+                    : Number(a.data.bw_fkdr);
+                  const fkdrB = isNaN(Number(b.data.bw_fkdr))
+                    ? Number.MAX_VALUE
+                    : Number(b.data.bw_fkdr);
+
+                  if (fkdrA !== fkdrB) {
+                    return fkdrB - fkdrA; // Sort numerically in descending order
                   }
                 }
 
+                // Step 3: If bw_fkdr is the same or one of the data is null, sort by name
                 const letterA = a.name.toUpperCase();
                 const letterB = b.name.toUpperCase();
 
