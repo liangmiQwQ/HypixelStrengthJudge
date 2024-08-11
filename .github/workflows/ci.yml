@@ -1,0 +1,45 @@
+name: Build Tauri App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - name: Install front-end dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: tauri-app
+          path: src-tauri/target/release/bundle/
+
+      - name: Upload installer to GitHub Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: src-tauri/target/release/bundle/msi/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
