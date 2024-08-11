@@ -169,6 +169,7 @@ pub async fn get_latest_info(
     // tokio::spawn✌️
 
     let is_pl: bool = !useful_lines.pl_lines.is_empty();
+    let mut is_in_lobby: bool = false;
     let who_line: String = match useful_lines.who_line {
         Some(wl) => wl,
         None => "".to_string(),
@@ -438,7 +439,39 @@ pub async fn get_latest_info(
             }
         }
     };
-    if who_line != "" {
+    if location_line != "" {
+        if let Some(pos) = Regex::new(r#"\{"server""#)
+            .unwrap()
+            .find(location_line.as_str())
+        {
+            let start = pos.start();
+            let location_str = &location_line[start..];
+
+            if let Some(raw_location) = match serde_json::from_str::<RawLocation>(location_str) {
+                Ok(rl) => Some(rl),
+                Err(_) => None,
+            } {
+                // gametype
+                return_data.personal_data.location.game_type = raw_location.gametype;
+                // server_type
+                if raw_location.server.starts_with("dynamiclobby") {
+                    // in the lobby
+                    return_data.personal_data.location.server_type = "LOBBY".to_string();
+                    is_in_lobby = true;
+                } else {
+                    return_data.personal_data.location.server_type = "GAME".to_string();
+                }
+                // game mode
+                if let Some(game_mode) = raw_location.mode {
+                    return_data.personal_data.location.game_mode = Some(game_mode);
+                }
+                if let Some(map) = raw_location.map {
+                    return_data.personal_data.location.map = Some(map);
+                }
+            } // else don't do anything, frontend return needJoinServer
+        }
+    }
+    if who_line != "" && !is_in_lobby {
         if let Some(pos) = who_line.find("[CHAT] ONLINE:") {
             let players_str_no_space = who_line[pos + "[CHAT] ONLINE:".len()..].replace(" ", "");
             let players: Vec<&str> = players_str_no_space.split(",").collect();
@@ -588,37 +621,6 @@ pub async fn get_latest_info(
         }
     });
     // ⬆️ No ZhenXun_awa
-    if location_line != "" {
-        if let Some(pos) = Regex::new(r#"\{"server""#)
-            .unwrap()
-            .find(location_line.as_str())
-        {
-            let start = pos.start();
-            let location_str = &location_line[start..];
-
-            if let Some(raw_location) = match serde_json::from_str::<RawLocation>(location_str) {
-                Ok(rl) => Some(rl),
-                Err(_) => None,
-            } {
-                // gametype
-                return_data.personal_data.location.game_type = raw_location.gametype;
-                // server_type
-                if raw_location.server.starts_with("dynamiclobby") {
-                    // in the lobby
-                    return_data.personal_data.location.server_type = "LOBBY".to_string();
-                } else {
-                    return_data.personal_data.location.server_type = "GAME".to_string();
-                }
-                // game mode
-                if let Some(game_mode) = raw_location.mode {
-                    return_data.personal_data.location.game_mode = Some(game_mode);
-                }
-                if let Some(map) = raw_location.map {
-                    return_data.personal_data.location.map = Some(map);
-                }
-            } // else don't do anything, frontend return needJoinServer
-        }
-    }
 
     // get personal data
     let app_handle_clone = app_handle.clone();
@@ -778,8 +780,8 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                         }
                     }
                 }
-                if !is_who {
-                    // all message after is_who
+                if !is_who && !is_location {
+                    // all message after who and after location
                     for pattern in &player_patterns {
                         if pattern.is_match(&line) {
                             addon_useful_player_lines.push(line.to_string());
