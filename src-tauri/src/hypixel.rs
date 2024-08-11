@@ -3,6 +3,7 @@ use crate::libs::current_timestamp;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs::{self};
 use std::future::Future;
 use std::path::PathBuf;
@@ -644,6 +645,11 @@ pub async fn get_latest_info(
             *personal_data = player_data;
         }),
     });
+
+    // the last check
+    // no repeat player
+    let mut seen_players = HashSet::new();
+    handles.retain(|handle| seen_players.insert(handle.player_name.clone()));
 
     // do all thread
     let mut futures = Vec::new();
