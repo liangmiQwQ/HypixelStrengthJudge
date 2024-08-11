@@ -33,8 +33,10 @@ jobs:
 
       - name: Create Release Tag
         id: create_tag
+        shell: pwsh
         run: |
-          tag="v$(date +'%Y%m%d%H%M%S')"
+          $tag = "v$(Get-Date -Format 'yyyyMMddHHmmss')"
+          echo "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
           git tag $tag
           git push origin $tag
         env:
