@@ -1,4 +1,4 @@
-import { Button, Dialog, IconButton } from "@radix-ui/themes";
+import { Dialog, IconButton } from "@radix-ui/themes";
 import { IoMdSettings } from "react-icons/io";
 import { useTranslation } from "react-i18next";
 import Settings from "./Settings";
