@@ -28,7 +28,8 @@ const en = {
     map: "map",
     gameMode: "Game Mode",
     settings: "Settings",
-    save: "保存",
+    save: "Save",
+    error: "Error",
   },
 };
 
@@ -58,6 +59,7 @@ const zh = {
     gameMode: "游戏模式",
     settings: "设置",
     save: "保存",
+    error: "错误",
   },
 };
 

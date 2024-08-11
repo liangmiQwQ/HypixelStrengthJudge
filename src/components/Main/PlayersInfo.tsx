@@ -56,6 +56,8 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
                   // Step 1: Check if bw_fkdr is 'nick'
                   const isANick = a.data.bw_fkdr === "nick";
                   const isBNick = b.data.bw_fkdr === "nick";
+                  const isAError = a.data.bw_fkdr === "error";
+                  const isBError = b.data.bw_fkdr === "error";
 
                   if (isANick && !isBNick) {
                     return -1; // a should come before b
@@ -64,20 +66,30 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
                     return 1; // b should come before a
                   }
 
-                  // Step 2: Convert bw_fkdr to number and sort numerically
-                  const fkdrA = isNaN(Number(a.data.bw_fkdr))
-                    ? Number.MAX_VALUE
-                    : Number(a.data.bw_fkdr);
-                  const fkdrB = isNaN(Number(b.data.bw_fkdr))
-                    ? Number.MAX_VALUE
-                    : Number(b.data.bw_fkdr);
+                  // Step 2: Check if bw_fkdr is 'error'
+                  if (isAError && !isBError) {
+                    return 1; // a should come after b
+                  }
+                  if (!isAError && isBError) {
+                    return -1; // b should come after a
+                  }
 
-                  if (fkdrA !== fkdrB) {
-                    return fkdrB - fkdrA; // Sort numerically in descending order
+                  // Step 3: Convert bw_fkdr to number and sort numerically if not 'nick' or 'error'
+                  if (!isAError && !isBError) {
+                    const fkdrA = isNaN(Number(a.data.bw_fkdr))
+                      ? Number.MAX_VALUE
+                      : Number(a.data.bw_fkdr);
+                    const fkdrB = isNaN(Number(b.data.bw_fkdr))
+                      ? Number.MAX_VALUE
+                      : Number(b.data.bw_fkdr);
+
+                    if (fkdrA !== fkdrB) {
+                      return fkdrB - fkdrA; // Sort numerically in descending order
+                    }
                   }
                 }
 
-                // Step 3: If bw_fkdr is the same or one of the data is null, sort by name
+                // Step 4: If bw_fkdr is the same or one of the data is null, sort by name
                 const letterA = a.name.toUpperCase();
                 const letterB = b.name.toUpperCase();
 
@@ -100,6 +112,13 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
                   {item.data?.bw_fkdr === "nick" && (
                     <>
                       <Table.Cell colSpan={5} className="text-center text-amber-800 font-bold">
+                        Nick
+                      </Table.Cell>
+                    </>
+                  )}
+                  {item.data?.bw_fkdr === "error" && (
+                    <>
+                      <Table.Cell colSpan={5} className="text-center text-slate-600 font-bold">
                         Nick
                       </Table.Cell>
                     </>

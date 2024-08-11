@@ -15,7 +15,11 @@ export default function UserInfo({ personalData, name, otherThing }: UserInfoPro
 
   const state: string = useMemo(() => {
     if (personalData !== null) {
-      return "success";
+      if (personalData.data?.bw_fkdr === "error") {
+        return "somethingError";
+      } else {
+        return "success";
+      }
     } else if (otherThing != undefined && otherThing != "") {
       return otherThing as any;
     } else {

@@ -50,10 +50,12 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
             {partyInfo?.players
               .sort((a, b) => {
                 if (a.player_data != null && b.player_data != null) {
-                  // Step 1: Check if bw_fkdr is 'nick'
                   const isANick = a.player_data.bw_fkdr === "nick";
                   const isBNick = b.player_data.bw_fkdr === "nick";
+                  const isAError = a.player_data.bw_fkdr === "error";
+                  const isBError = b.player_data.bw_fkdr === "error";
 
+                  // Step 1: Check if bw_fkdr is 'nick'
                   if (isANick && !isBNick) {
                     return -1; // a should come before b
                   }
@@ -61,20 +63,30 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                     return 1; // b should come before a
                   }
 
-                  // Step 2: Convert bw_fkdr to number and sort numerically
-                  const fkdrA = isNaN(Number(a.player_data.bw_fkdr))
-                    ? Number.MAX_VALUE
-                    : Number(a.player_data.bw_fkdr);
-                  const fkdrB = isNaN(Number(b.player_data.bw_fkdr))
-                    ? Number.MAX_VALUE
-                    : Number(b.player_data.bw_fkdr);
+                  // Step 2: Check if bw_fkdr is 'error'
+                  if (isAError && !isBError) {
+                    return 1; // a should come after b
+                  }
+                  if (!isAError && isBError) {
+                    return -1; // b should come after a
+                  }
 
-                  if (fkdrA !== fkdrB) {
-                    return fkdrB - fkdrA; // Sort numerically in descending order
+                  // Step 3: Convert bw_fkdr to number and sort numerically if not 'nick' or 'error'
+                  if (!isAError && !isBError) {
+                    const fkdrA = isNaN(Number(a.player_data.bw_fkdr))
+                      ? Number.MAX_VALUE
+                      : Number(a.player_data.bw_fkdr);
+                    const fkdrB = isNaN(Number(b.player_data.bw_fkdr))
+                      ? Number.MAX_VALUE
+                      : Number(b.player_data.bw_fkdr);
+
+                    if (fkdrA !== fkdrB) {
+                      return fkdrB - fkdrA; // Sort numerically in descending order
+                    }
                   }
                 }
 
-                // Step 3: If bw_fkdr is the same or one of the player_data is null, sort by name
+                // Step 4: If bw_fkdr is the same or one of the player_data is null, sort by name
                 const letterA = a.name.toUpperCase();
                 const letterB = b.name.toUpperCase();
 
@@ -96,6 +108,13 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                     <>
                       <Table.Cell colSpan={3} className="text-center text-amber-800 font-bold">
                         Nick
+                      </Table.Cell>
+                    </>
+                  )}
+                  {item.player_data?.bw_fkdr === "error" && (
+                    <>
+                      <Table.Cell colSpan={3} className="text-center text-slate-600 font-bold">
+                        {t("error")}
                       </Table.Cell>
                     </>
                   )}

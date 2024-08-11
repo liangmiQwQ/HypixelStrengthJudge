@@ -253,17 +253,20 @@ pub async fn get_player_data(
                         .await;
                         return Some(player_data); // Nick
                     } else {
-                        return None; // server error
+                        player_data.bw_fkdr = "error".to_string();
+                        return Some(player_data); // server error
                     }
                 } else {
-                    return None; // server error
+                    player_data.bw_fkdr = "error".to_string();
+                    return Some(player_data); // server error
                 }
             }
 
             // player_data
             return Some(player_data);
         } else {
-            return None; // server error
+            player_data.bw_fkdr = "error".to_string();
+            return Some(player_data); // server error
         }
     };
 }
