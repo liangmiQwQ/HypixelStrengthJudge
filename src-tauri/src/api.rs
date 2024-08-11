@@ -234,18 +234,30 @@ pub async fn get_player_data(
                 )
                 .await;
             } else {
-                // nick
-                player_data.bw_fkdr = "nick".to_string();
-                add_cache(
-                    app_handle.clone(),
-                    CachePlayerData {
-                        player_name: username,
-                        time: current_timestamp(),
-                        data: Some(player_data.clone()),
-                    },
-                )
-                .await;
-                return Some(player_data); // Nick
+                // add success state check
+                if let Some(is_success) = response
+                    .get("success")
+                    .and_then(|success| success.as_bool())
+                {
+                    if is_success {
+                        // nick
+                        player_data.bw_fkdr = "nick".to_string();
+                        add_cache(
+                            app_handle.clone(),
+                            CachePlayerData {
+                                player_name: username,
+                                time: current_timestamp(),
+                                data: Some(player_data.clone()),
+                            },
+                        )
+                        .await;
+                        return Some(player_data); // Nick
+                    } else {
+                        return None; // server error
+                    }
+                } else {
+                    return None; // server error
+                }
             }
 
             // player_data
