@@ -29,7 +29,7 @@ export default function SettingOption({
   return (
     <div
       className={
-        "w-full flex justify-between items-center" + (optionType === "input" ? " my-1" : "")
+        "w-full flex justify-between items-center" + (optionType === "input" ? " my-1 gap-4" : "")
       }
     >
       <span>{tipsText}</span>
@@ -55,7 +55,7 @@ export default function SettingOption({
           defaultValue={defaultValue}
           onChange={e => debouncedHandleChange(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 max-w-40 border-b-slate-600 focus:border-b-black border-b-[1px] outline-none"
+          className="flex-1 max-w-[400px] border-b-slate-600 focus:border-b-black border-b-[1px] outline-none"
         />
       )}
     </div>

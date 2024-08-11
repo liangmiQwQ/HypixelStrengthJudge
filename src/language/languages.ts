@@ -27,6 +27,8 @@ const en = {
     location: "Location",
     map: "map",
     gameMode: "Game Mode",
+    settings: "Settings",
+    save: "保存",
   },
 };
 
@@ -54,6 +56,8 @@ const zh = {
     location: "位置",
     map: "地图",
     gameMode: "游戏模式",
+    settings: "设置",
+    save: "保存",
   },
 };
 
