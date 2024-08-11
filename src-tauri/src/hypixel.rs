@@ -780,8 +780,8 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                         }
                     }
                 }
-                if !is_who {
-                    // all message after is_who
+                if !is_who && !is_location {
+                    // all message after who and after location
                     for pattern in &player_patterns {
                         if pattern.is_match(&line) {
                             addon_useful_player_lines.push(line.to_string());
