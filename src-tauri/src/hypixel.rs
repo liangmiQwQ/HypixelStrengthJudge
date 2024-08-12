@@ -707,7 +707,7 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
     let useful_party_lines_patterns = get_useful_party_lines_patterns();
     let mut is_pl = false; // if it = 2 -> break
     let mut is_who = false;
-    let mut is_location = true;
+    let mut is_location = false;
 
     let location_pattern = Regex::new(r#"\{"server":"[^"]*","gametype":"[^"]*""#).unwrap();
     // let location_pattern = Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)离开了组队。").unwrap();
@@ -780,8 +780,10 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                         }
                     }
                 }
+
                 if !is_who && !is_location {
                     // all message after who and after location
+                    println!("{}", line);
                     for pattern in &player_patterns {
                         if pattern.is_match(&line) {
                             addon_useful_player_lines.push(line.to_string());
