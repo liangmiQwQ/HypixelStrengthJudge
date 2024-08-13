@@ -121,10 +121,11 @@ pub fn extract_party_moderators(line: &str) -> Option<Vec<String>> {
 }
 
 pub fn extract_party_members(line: &str) -> Option<Vec<String>> {
+    let dot_line = replace_x_with_dot(line);
     let re = Regex::new(r"\[CHAT\] Party Members: (.*)").unwrap();
 
     let players = re
-        .captures(line)
+        .captures(&dot_line)
         .and_then(|caps| caps.get(1))
         .map(|match_| match_.as_str().to_string())?;
 
@@ -134,9 +135,23 @@ pub fn extract_party_members(line: &str) -> Option<Vec<String>> {
     let result: Vec<String> = re_spaces
         .replace_all(&no_brackets, "")
         .split("●")
-        .filter(|s| !s.is_empty()) // 过滤掉空字符串
-        .map(|s| s.trim().to_string()) // 将 &str 转换为 String
+        .filter(|s| !s.is_empty())
+        .map(|s| s.trim().to_string())
         .collect();
 
     return Some(result);
+}
+
+fn replace_x_with_dot(input: &str) -> String {
+    let re = Regex::new(r"�{2,}").unwrap();
+
+    // 替换逻辑
+    re.replace_all(input, |caps: &regex::Captures| {
+        let x_count = caps[0].len();
+        let dots_count = x_count / 2;
+        let remaining_x = x_count % 2;
+
+        format!("{}{}", "●".repeat(dots_count), "�".repeat(remaining_x))
+    })
+    .into_owned()
 }
