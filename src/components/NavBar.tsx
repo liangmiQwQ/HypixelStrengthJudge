@@ -8,7 +8,7 @@ export default function NavBar() {
 
   return (
     <div
-      className="bg-accent-700 h-14 w-full flex justify-between items-center fixed z-50 [--webkit-app-region:no-drag] px-2"
+      className="bg-accent-700 h-14 w-full flex justify-between items-center fixed z-50 [--webkit-app-region:no-drag] px-2 rounded-t-lg"
       data-tauri-drag-region
     >
       <div className="opacity-0">
