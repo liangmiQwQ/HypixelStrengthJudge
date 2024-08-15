@@ -3,9 +3,12 @@ import useConfig from "../store/config";
 import SettingOption from "./SettingOption";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { os } from "@tauri-apps/api";
 
-export default function Settings() {
+interface SettingsProps {
+  userOS: "LINUX" | "WINDOWS" | "DARWIN" | undefined;
+}
+
+export default function Settings({ userOS }: SettingsProps) {
   const { setAccentColor, setHypApiKey, setLogPath, setLanguage, setUsername } = useConfig();
   const { accentColor, hypApiKey, logPath, language, username } = useConfig();
   const { t } = useTranslation();
@@ -14,13 +17,9 @@ export default function Settings() {
   const isWindows = useRef(false);
 
   useEffect(() => {
-    const fetchOSInfo = async () => {
-      const platform = await os.platform();
-      if (platform.startsWith("win")) {
-        isWindows.current = true;
-      }
-    };
-    fetchOSInfo();
+    if (userOS === "WINDOWS") {
+      isWindows.current = true;
+    }
   }, []);
   return (
     <div className="flex flex-col gap-3">
@@ -46,7 +45,7 @@ export default function Settings() {
         optionType="input"
         defaultValue={logPath}
         placeholder={
-          isWindows.current ? "C:\\\\Users\\Admin\\AppData\\.minecraft\\logs" : "~/.minecraft/logs"
+          isWindows.current ? "C:\\Users\\Admin\\AppData\\.minecraft\\logs" : "~/.minecraft/logs"
         }
         onValueChange={setLogPath}
       />
