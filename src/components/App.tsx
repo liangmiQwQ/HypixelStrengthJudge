@@ -2,26 +2,28 @@ import { Theme } from "@radix-ui/themes";
 import "../global.css";
 import "@radix-ui/themes/styles.css";
 import NavBar from "./NavBar";
-import { initI18n } from "../language/languages";
 import useConfig from "../store/config";
 import GameInfo from "./Main/GameInfo";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import i18next from "i18next";
+import { initI18n } from "../language/languages";
 
 export default function App() {
   const { accentColor, language } = useConfig();
-  // const { i18n } = useTranslation();
+  const isInit = useRef(false);
 
   useEffect(() => {
-    initI18n(language);
-  });
-
-  useEffect(() => {
-    //   i18n.changeLanguage(language);
-    i18next.changeLanguage(language, (err, _t) => {
-      if (err) return console.log("something went wrong loading", err);
-    });
+    if (isInit.current) {
+      i18next.changeLanguage(language, (err, _t) => {
+        if (err) return console.log("something went wrong loading", err);
+      });
+    }
   }, [language]);
+
+  if (!isInit.current) {
+    initI18n(language);
+    isInit.current = true;
+  }
 
   return (
     <Theme appearance="light" className="rounded-lg overflow-hidden" accentColor={accentColor}>

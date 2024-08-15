@@ -1,0 +1,12 @@
+{
+  "tauri": {
+    "windows": [
+      {
+        "decorations": true,
+        "transparent": false,
+        "titleBarStyle": "Overlay",
+        "title": ""
+      }
+    ]
+  }
+}
