@@ -708,6 +708,7 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
     let mut is_pl = false; // if it = 2 -> break
     let mut is_who = false;
     let mut is_location = false;
+    let mut clear_all = false;
 
     let location_pattern = Regex::new(r#"\{"server":"[^"]*","gametype":"[^"]*""#).unwrap();
     // let location_pattern = Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)离开了组队。").unwrap();
@@ -740,6 +741,7 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                 let real_index = lines.len() - index - 1;
                 // Ensure we do not exceed the bounds of the lines vector
                 latest_log_file.useful_line.pl_lines.clear();
+                latest_log_file.useful_line.party_lines.clear();
                 for add_number in 0..7 {
                     if real_index + add_number < lines.len() {
                         latest_log_file
@@ -758,15 +760,10 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                 is_who = true;
                 // Once wholine is found, all previous useful_partylines are useless and will be cleared directly. In addition, since wholine is found, party_line will not be affected.
                 latest_log_file.useful_line.player_lines.clear();
-                // todo: who line
-                // need only one who line
             } else if location_pattern.is_match(line) {
                 latest_log_file.useful_line.location_line = Some(line.to_string());
                 is_location = true;
-                latest_log_file.useful_line.party_lines.clear();
-                // the same of who line
-                // todo: location line
-                // if pl line and location line are all found => break
+                clear_all = true;
             } else {
                 if !is_pl {
                     for pattern in &party_patterns {
@@ -807,6 +804,10 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
         .player_lines
         .extend(addon_useful_player_lines);
 
+    if clear_all == true {
+        latest_log_file.useful_line.player_lines.clear();
+        latest_log_file.useful_line.who_line = None;
+    }
     return latest_log_file.useful_line.clone();
 }
 
