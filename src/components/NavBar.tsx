@@ -32,9 +32,9 @@ export default function NavBar() {
       }
       data-tauri-drag-region
     >
-      {/* <div className={userOS.current === "DARWIN" ? "opacity-0" : ""}> */}
-      <Control></Control>
-      {/* </div> */}
+      <div className={userOS.current === "DARWIN" ? "opacity-0" : ""}>
+        <Control></Control>
+      </div>
       <div>
         <span
           className="text-white font-semibold text-2xl cursor-default [--webkit-app-region:no-drag]"
