@@ -708,7 +708,7 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
     let mut is_pl = false; // if it = 2 -> break
     let mut is_who = false;
     let mut is_location = false;
-    let mut clear_all = false;
+    let mut changed_who_line = String::from("");
 
     let location_pattern = Regex::new(r#"\{"server":"[^"]*","gametype":"[^"]*""#).unwrap();
     // let location_pattern = Regex::new(r"\[CHAT\] (?:\[.*\])?(?:\s)?(.*)离开了组队。").unwrap();
@@ -756,14 +756,16 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                 is_pl = true
             } else if !is_who && !is_location && line.contains("[CHAT] ONLINE: ") {
                 // the who line need before location line
-                latest_log_file.useful_line.who_line = Some(line.to_string());
+                // latest_log_file.useful_line.who_line = Some(line.to_string());
+                changed_who_line = line.to_string();
                 is_who = true;
                 // Once wholine is found, all previous useful_partylines are useless and will be cleared directly. In addition, since wholine is found, party_line will not be affected.
                 latest_log_file.useful_line.player_lines.clear();
             } else if location_pattern.is_match(line) {
                 latest_log_file.useful_line.location_line = Some(line.to_string());
                 is_location = true;
-                clear_all = true;
+                latest_log_file.useful_line.who_line = None;
+                latest_log_file.useful_line.player_lines.clear();
             } else {
                 if !is_pl {
                     for pattern in &party_patterns {
@@ -804,9 +806,8 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
         .player_lines
         .extend(addon_useful_player_lines);
 
-    if clear_all == true {
-        latest_log_file.useful_line.player_lines.clear();
-        latest_log_file.useful_line.who_line = None;
+    if changed_who_line != "" {
+        latest_log_file.useful_line.who_line = Some(changed_who_line);
     }
     return latest_log_file.useful_line.clone();
 }
