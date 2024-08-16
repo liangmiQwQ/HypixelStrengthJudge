@@ -2,8 +2,12 @@
   "tauri": {
     "windows": [
       {
-        "decorations": true,
-        "transparent": false,
+        "width": 1100,
+        "height": 700,
+        "minHeight": 650,
+        "maxHeight": 1000,
+        "maxWidth": 1400,
+        "minWidth": 1000,
         "titleBarStyle": "Overlay",
         "title": ""
       }

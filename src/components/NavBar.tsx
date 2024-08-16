@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Settings from "./Settings";
 import { useEffect, useRef } from "react";
 import { os } from "@tauri-apps/api";
+import Control from "./Control";
 
 export default function NavBar() {
   const { t } = useTranslation();
@@ -31,11 +32,9 @@ export default function NavBar() {
       }
       data-tauri-drag-region
     >
-      <div className="opacity-0">
-        <IconButton radius="full" size="3">
-          <IoMdSettings />
-        </IconButton>
-      </div>
+      {/* <div className={userOS.current === "DARWIN" ? "opacity-0" : ""}> */}
+      <Control></Control>
+      {/* </div> */}
       <div>
         <span
           className="text-white font-semibold text-2xl cursor-default [--webkit-app-region:no-drag]"
