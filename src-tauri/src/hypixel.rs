@@ -752,7 +752,7 @@ fn get_useful_lines(log_dir_path: &str) -> UsefulLines {
                     }
                 }
                 is_pl = true
-            } else if !is_who && is_location && line.contains("[CHAT] ONLINE: ") {
+            } else if !is_who && !is_location && line.contains("[CHAT] ONLINE: ") {
                 // the who line need before location line
                 latest_log_file.useful_line.who_line = Some(line.to_string());
                 is_who = true;
