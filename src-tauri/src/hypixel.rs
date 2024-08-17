@@ -216,7 +216,7 @@ pub async fn get_latest_info(
                             app_handle_clone,
                             api_key_clone,
                             username.clone(),
-                            5 * 60 * 60 * 1000,
+                            30 * 60, // 30 mins
                         )
                         .await;
 
@@ -250,7 +250,7 @@ pub async fn get_latest_info(
                                 app_handle_clone,
                                 api_key_clone,
                                 leader_name.clone(),
-                                3 * 60 * 60 * 1000,
+                                30 * 60, // 30mins
                             )
                             .await;
 
@@ -290,7 +290,7 @@ pub async fn get_latest_info(
                                         app_handle_clone,
                                         api_key_clone,
                                         moderator_name.clone(),
-                                        3 * 60 * 60 * 1000,
+                                        30 * 60, // 30 mins
                                     )
                                     .await;
 
@@ -324,7 +324,7 @@ pub async fn get_latest_info(
                                         app_handle_clone,
                                         api_key_clone,
                                         member_name.clone(),
-                                        3 * 60 * 60 * 1000,
+                                        30 * 60, // 30 mins
                                     )
                                     .await;
 
@@ -374,7 +374,7 @@ pub async fn get_latest_info(
                                         app_handle_clone,
                                         api_key_clone,
                                         join_player_name.clone(),
-                                        3 * 60 * 60 * 1000,
+                                        30 * 60, // 30 mins
                                     )
                                     .await;
 
@@ -513,7 +513,7 @@ pub async fn get_latest_info(
                                 app_handle_clone,
                                 api_key_clone,
                                 username.clone(),
-                                24 * 60 * 60 * 1000,
+                                12 * 60 * 60, // half a day
                             )
                             .await;
 
@@ -569,7 +569,7 @@ pub async fn get_latest_info(
                                             app_handle_clone,
                                             api_key_clone,
                                             join_player_name.clone(),
-                                            24 * 30 * 60 * 1000,
+                                            12 * 30 * 60,
                                         )
                                         .await;
 
@@ -638,7 +638,7 @@ pub async fn get_latest_info(
                 app_handle_clone,
                 api_key_clone,
                 username,
-                2 * 60 * 60 * 1000,
+                10 * 60, /* 10 mins */
             )
             .await;
 
