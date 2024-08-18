@@ -100,7 +100,7 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
                   <Table.RowHeaderCell>
                     <PlayerName playerData={item.data} playerName={item.name}></PlayerName>
                   </Table.RowHeaderCell>
-                  {item.data?.bw_fkdr !== "nick" && (
+                  {item.data?.bw_fkdr !== "nick" && item.data?.bw_fkdr != "error" && (
                     <>
                       <Table.Cell>{item.data?.bw_level}</Table.Cell>
                       <Table.Cell>{item.data?.lobby_level}</Table.Cell>
@@ -119,7 +119,7 @@ export default function PlayersInfo({ playersInfo, otherThing }: PlayersInfoProp
                   {item.data?.bw_fkdr === "error" && (
                     <>
                       <Table.Cell colSpan={5} className="text-center text-slate-600 font-bold">
-                        Nick
+                        {t("error")}
                       </Table.Cell>
                     </>
                   )}

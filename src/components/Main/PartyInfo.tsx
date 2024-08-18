@@ -97,7 +97,7 @@ export default function PartyInfo({ partyInfo, otherThing }: PartyInfoProps) {
                   <Table.RowHeaderCell>
                     <PlayerName playerData={item?.player_data} playerName={item?.name}></PlayerName>
                   </Table.RowHeaderCell>
-                  {item.player_data?.bw_fkdr !== "nick" && (
+                  {item.player_data?.bw_fkdr !== "nick" && item.player_data?.bw_fkdr != "error" && (
                     <>
                       <Table.Cell>{item.player_data?.bw_level}</Table.Cell>
                       <Table.Cell>{item.player_data?.bw_fkdr}</Table.Cell>
